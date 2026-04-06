@@ -102,16 +102,34 @@ ${JSON.stringify(allTitles)}
 }
 
 async function analyzeWithGemini(title, description, category, apiKey) {
-  const prompt = `당신은 한국 정치 뉴스 분석 전문가입니다.
+  const prompt = `당신은 한국 정치·시사 전문 분석가입니다. 한국 정치 상황에 대한 깊은 이해를 바탕으로 분석하세요.
 
-뉴스 제목: "${title}"
+## 현재 한국 정치 배경 (2025-2026)
+- 윤석열 대통령은 2024년 12월 비상계엄 선포 후 탄핵되어 2025년 4월 헌법재판소에서 파면 확정됨
+- 현재 대통령 권한대행 체제이며 조기 대선이 예정됨
+- 여당: 국민의힘 (보수), 야당: 더불어민주당 (진보/중도진보)
+- 주요 보수 인물: 한동훈, 홍준표, 오세훈, 이준석, 김기현, 나경원
+- 주요 진보 인물: 이재명, 박찬대, 정청래, 김동연, 이낙연
+- 보수 진영 성향: 한미동맹 중시, 시장경제, 검찰 독립, 원전 확대, 북한 압박, 규제 완화
+- 진보 진영 성향: 남북대화, 복지 확대, 검찰 개혁, 재생에너지, 노동권 강화, 재벌 규제
+- 진보 매체: 한겨레, 경향신문, 오마이뉴스, JTBC
+- 보수 매체: 조선일보, 동아일보, 중앙일보, TV조선, 채널A
+- 중립 매체: 연합뉴스, KBS, MBC, SBS, YTN
+
+## 분석할 뉴스
+제목: "${title}"
 본문 요약: "${description}"
 카테고리: ${category}
 
-중요: 제목과 본문을 모두 읽고 맥락을 정확히 파악하세요. 이미 일어난 사건인지, 앞으로의 계획인지 구분하세요.
+## 분석 지침
+1. 제목과 본문을 모두 읽고 사건의 정확한 맥락을 파악하세요 (이미 일어난 일인지, 진행 중인지, 예정인지)
+2. 등장 인물이 어떤 정당/진영인지 정확히 파악하세요
+3. 진보와 보수가 이 사안을 실제로 어떻게 바라보는지, 각 진영의 논리와 가치관에 기반하여 분석하세요
+4. 단순히 "찬성/반대"가 아니라, 왜 그런 입장을 취하는지 깊이 있게 설명하세요
+5. 요약은 사실 관계를 정확히 반영하세요 (예: "파면 요구" vs "파면 이후 시위"를 구분)
 
 JSON만 응답:
-{"summary":"핵심 내용 정확 요약 2-3문장","progressive_stance":"진보 핵심 입장","progressive_reasons":["이유1","이유2","이유3"],"progressive_concern":"진보 우려","conservative_stance":"보수 핵심 입장","conservative_reasons":["이유1","이유2","이유3"],"conservative_concern":"보수 우려","common_ground":"공통 접점"}`;
+{"summary":"사실 관계를 정확히 반영한 핵심 요약 2-3문장","progressive_stance":"진보 진영이 이 사안을 바라보는 실제 입장 (구체적으로)","progressive_reasons":["한국 진보의 가치관에 기반한 구체적 이유1","이유2","이유3"],"progressive_concern":"진보 진영의 구체적 우려","conservative_stance":"보수 진영이 이 사안을 바라보는 실제 입장 (구체적으로)","conservative_reasons":["한국 보수의 가치관에 기반한 구체적 이유1","이유2","이유3"],"conservative_concern":"보수 진영의 구체적 우려","common_ground":"양쪽이 동의할 수 있는 부분"}`;
 
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
