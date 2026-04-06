@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 
     if (newArticles.length === 0) return res.status(200).json({ message: "중복 제거 후 새 기사 없음", count: 0 });
 
-    const toAnalyze = newArticles.slice(0, 5);
+    const toAnalyze = newArticles.slice(0, 2);
     const analyzed = [];
     for (const article of toAnalyze) {
       try {
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       } catch (e) { console.error("Gemini error:", e.message);
         analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-" });
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 500));
     }
 
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
