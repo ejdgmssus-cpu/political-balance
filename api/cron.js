@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       try {
         const analysis = await analyzeWithGemini(article.title, article.description, article.category, GEMINI_KEY);
         analyzed.push({ ...article, ...analysis });
-      } catch (e) {
+      } catch (e) { console.error("Gemini error:", e.message);
         analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-" });
       }
       await new Promise(r => setTimeout(r, 2000));
