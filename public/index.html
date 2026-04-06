@@ -45,8 +45,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <script>
 const S={tab:'home',articles:[],loading:!1,sel:null,comments:[],cmtLoading:!1,sq:'',sf:!1,
   sources:['전체','정치','경제','사회','외교','부동산','에너지','노동'],
-  filters:['전체','속보','분석'],
-  ac:'전체',af:'전체',stats:{read:0,comments:0}};
+  ac:'전체',stats:{read:0,comments:0}};
 
 const CAT_COLORS={정치:['#5A50DC','rgba(90,80,220,0.08)'],경제:['#22A861','rgba(34,168,97,0.08)'],외교:['#E88C1A','rgba(232,140,26,0.08)'],부동산:['#1A6DFF','rgba(26,109,255,0.08)'],사회:['#9B59B6','rgba(155,89,182,0.08)'],에너지:['#E8363A','rgba(232,54,58,0.08)'],노동:['#E88C1A','rgba(232,140,26,0.08)'],기타:['#999','rgba(153,153,153,0.08)']};
 
@@ -71,49 +70,32 @@ async function loadArticles(cat,search){S.loading=!0;render();try{let u='/api/ar
 async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/api/comments?article_id=${id}`);S.comments=r.ok?await r.json():[];}catch(e){S.comments=[];}S.cmtLoading=!1;render();}
 async function postCmt(id,t){try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t})});S.stats.comments++;loadCmt(id);}catch(e){}}
 
-// ═══════════════════════════════════════════
-// HEADER (SAVE style)
-// ═══════════════════════════════════════════
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
-    // Logo row
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 20px 12px'}},
       h('div',{style:{display:'flex',alignItems:'baseline',gap:'6px'}},
         h('span',{style:{fontSize:'20px',fontWeight:'900',letterSpacing:'-0.04em'}},'PB'),
         h('span',{style:{fontSize:'10px',fontWeight:'600',color:'var(--muted)',letterSpacing:'0.03em'}},'POLITICAL BALANCE')),
       h('div',{innerHTML:IC.search,style:{cursor:'pointer',color:'var(--muted)',padding:'4px'},
         onClick:()=>{S.tab='search';render();}})),
-
-    // Category tabs
     h('div',{className:'hide-scroll',style:{display:'flex',overflowX:'auto',paddingLeft:'20px',paddingRight:'20px'}},
       ...S.sources.map(s=>h('button',{style:{padding:'10px 14px',border:'none',background:'transparent',fontSize:'13px',fontWeight:S.ac===s?'700':'500',color:S.ac===s?'var(--text)':'var(--muted)',cursor:'pointer',whiteSpace:'nowrap',borderBottom:S.ac===s?'2px solid var(--text)':'2px solid transparent',transition:'all 0.15s'},
-        onClick:()=>{S.ac=s;loadArticles(s);}},s))),
-
-    // Filter chips
-    h('div',{style:{display:'flex',gap:'6px',padding:'10px 20px 10px'}},
-      ...S.filters.map(f=>h('button',{style:{padding:'5px 14px',borderRadius:'16px',border:S.af===f?'1.5px solid var(--text)':'1.5px solid var(--border)',fontSize:'12px',fontWeight:'600',cursor:'pointer',background:S.af===f?'var(--text)':'transparent',color:S.af===f?(typeof window!=='undefined'&&window.matchMedia('(prefers-color-scheme:dark)').matches?'#0A0A0A':'#F5F5F5'):'var(--text3)',transition:'all 0.15s'},
-        onClick:()=>{S.af=f;render();}},f)))
+        onClick:()=>{S.ac=s;loadArticles(s);}},s)))
   );
 }
 
-// ═══════════════════════════════════════════
-// NEWS CARD (SAVE style)
-// ═══════════════════════════════════════════
 function rCard(a,i){
   const cc=CAT_COLORS[a.category]||CAT_COLORS['기타'];
   const has=a.summary&&!['AI 분석 준비 중','분석 중'].includes(a.summary);
   const brk=a.is_breaking;
   return h('div',{style:{background:'var(--card)',padding:'16px 20px',borderBottom:'1px solid var(--border)',cursor:'pointer',animation:`fadeUp 0.3s ease ${i*0.03}s both`},
     onClick:()=>{S.sel=a;S.stats.read++;loadCmt(a.id);render();}},
-    // Source badge + time
     h('div',{style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'8px'}},
       h('span',{style:{fontSize:'11px',fontWeight:'700',color:'#FFF',background:cc[0],padding:'2px 8px',borderRadius:'4px',lineHeight:'1.5'}},a.source||a.category),
       a.source&&a.category?h('span',{style:{fontSize:'11px',color:'var(--muted)'}},`· ${a.category}`):null,
       brk?h('span',{style:{fontSize:'10px',fontWeight:'700',color:'var(--breaking)'}},'· 속보'):null,
       h('span',{style:{fontSize:'11px',color:'var(--muted)',marginLeft:'auto'}},tAgo(a.created_at))),
-    // Title
     h('div',{style:{fontSize:'15px',fontWeight:'700',lineHeight:'1.55',marginBottom:'8px'}},a.title),
-    // Stance preview
     has?h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px',marginBottom:'8px'}},
       h('div',{style:{padding:'8px 10px',borderRadius:'var(--radius-sm)',background:'var(--left-bg)',borderLeft:'2.5px solid var(--left-color)'}},
         h('div',{style:{fontSize:'10px',fontWeight:'700',color:'var(--left-color)',marginBottom:'3px'}},'진보'),
@@ -121,56 +103,44 @@ function rCard(a,i){
       h('div',{style:{padding:'8px 10px',borderRadius:'var(--radius-sm)',background:'var(--right-bg)',borderLeft:'2.5px solid var(--right-color)'}},
         h('div',{style:{fontSize:'10px',fontWeight:'700',color:'var(--right-color)',marginBottom:'3px'}},'보수'),
         h('div',{style:{fontSize:'11.5px',color:'var(--text2)',lineHeight:'1.45',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical'}},a.conservative_stance))):null,
-    // View count
     h('div',{style:{display:'flex',alignItems:'center',gap:'4px',color:'var(--muted)'}},
       h('span',{innerHTML:IC.eye,style:{opacity:0.6}}),
       h('span',{style:{fontSize:'11px'}},fv(a.view_count||Math.floor(Math.random()*3000+100))))
   );
 }
 
-// ═══════════════════════════════════════════
-// DETAIL PAGE (SAVE style: scroll-through, fixed comment bar)
-// ═══════════════════════════════════════════
 function rDetail(){
   const a=S.sel;const cc=CAT_COLORS[a.category]||CAT_COLORS['기타'];
   const rs=s=>{try{return JSON.parse(s)}catch{return[s]}};
   const has=a.summary&&!['AI 분석 준비 중','분석 중'].includes(a.summary);
   return h('div',{style:{background:'var(--bg)',minHeight:'100vh',paddingBottom:'72px',animation:'fadeIn 0.2s ease'}},
-    // Top nav
     h('div',{style:{padding:'50px 16px 12px',display:'flex',alignItems:'center',gap:'12px',background:'var(--nav)',position:'sticky',top:0,zIndex:10,borderBottom:'1px solid var(--sep)'}},
       h('button',{innerHTML:IC.back,style:{width:'32px',height:'32px',borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text)'},onClick:()=>{S.sel=null;render();}}),
       h('span',{style:{fontSize:'15px',fontWeight:'700'}},'뉴스 상세'),
       h('div',{style:{marginLeft:'auto'},innerHTML:IC.bmark})),
-    // Source + date
     h('div',{style:{padding:'16px 20px 0'}},
       h('div',{style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'8px'}},
         h('span',{style:{fontSize:'11px',fontWeight:'700',color:'#FFF',background:cc[0],padding:'2px 8px',borderRadius:'4px'}},a.source||a.category),
         a.is_breaking?h('span',{style:{fontSize:'10px',fontWeight:'700',color:'var(--breaking)'}},'· 속보'):null),
       h('div',{style:{fontSize:'12px',color:'var(--muted)',marginBottom:'12px'}},new Date(a.created_at).toLocaleString('ko-KR')),
       h('h2',{style:{fontSize:'19px',fontWeight:'800',lineHeight:'1.55',letterSpacing:'-0.02em'}},a.title)),
-    // AI Summary
     has?h('div',{style:{margin:'16px 20px',padding:'16px',borderRadius:'var(--radius)',background:'var(--summary-bg)'}},
       h('div',{style:{fontSize:'12px',fontWeight:'700',color:'#5A50DC',marginBottom:'8px',display:'flex',alignItems:'center',gap:'5px'}},
         h('span',{style:{fontSize:'11px'}},'✦'),h('span',{},'AI 요약')),
       h('div',{style:{fontSize:'14px',lineHeight:'1.75',color:'var(--text)'}},a.summary)):null,
-    // Article body
     h('div',{style:{margin:'0 20px',padding:'16px',borderRadius:'var(--radius)',background:'var(--card)',border:'1px solid var(--border)'}},
       h('div',{style:{fontSize:'14px',lineHeight:'1.8',color:'var(--text2)'}},a.description||'본문 요약이 없습니다.'),
       h('a',{href:a.link,target:'_blank',style:{display:'inline-flex',alignItems:'center',gap:'4px',marginTop:'14px',fontSize:'13px',color:'var(--blue)',textDecoration:'none',fontWeight:'600'}},
         h('span',{},'원문 기사 보기'),h('span',{innerHTML:IC.link}))),
-    // Stances
     has?h('div',{style:{margin:'12px 20px 0',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}},
       rSide(a.progressive_stance,rs(a.progressive_reasons),a.progressive_concern,'진보','var(--left-color)','var(--left-bg)'),
       rSide(a.conservative_stance,rs(a.conservative_reasons),a.conservative_concern,'보수','var(--right-color)','var(--right-bg)')):null,
-    // Common ground
     has?h('div',{style:{margin:'8px 20px 0',padding:'14px 16px',borderRadius:'var(--radius)',background:'var(--common-bg)'}},
       h('div',{style:{fontSize:'11px',fontWeight:'700',color:'var(--green)',marginBottom:'6px'}},'공통 접점'),
       h('div',{style:{fontSize:'13px',color:'var(--text)',lineHeight:'1.65'}},a.common_ground)):null,
-    // Stats
     h('div',{style:{margin:'16px 20px',display:'flex',alignItems:'center',gap:'16px',padding:'12px 0',borderTop:'1px solid var(--border)',borderBottom:'1px solid var(--border)'}},
       h('div',{style:{display:'flex',alignItems:'center',gap:'5px',color:'var(--muted)'}},h('span',{innerHTML:IC.eye}),h('span',{style:{fontSize:'12px'}},fv(a.view_count||1168))),
       h('div',{style:{display:'flex',alignItems:'center',gap:'5px',color:'var(--muted)'}},h('span',{innerHTML:IC.cmt}),h('span',{style:{fontSize:'12px'}},`${S.comments.length}`))),
-    // Comments
     h('div',{style:{padding:'0 20px'}},
       h('div',{style:{fontSize:'14px',fontWeight:'700',marginBottom:'14px'}},`댓글 ${S.comments.length}개`),
       S.cmtLoading?h('div',{style:{textAlign:'center',padding:'20px',color:'var(--muted)',fontSize:'13px'}},'불러오는 중...'):null,
@@ -180,7 +150,6 @@ function rDetail(){
           h('span',{style:{fontSize:'11px',color:'var(--muted)'}},tAgo(c.created_at))),
         h('div',{style:{fontSize:'13px',lineHeight:'1.6',color:'var(--text2)'}},c.text))),
       S.comments.length===0&&!S.cmtLoading?h('div',{style:{textAlign:'center',padding:'30px',color:'var(--muted)'}},h('div',{style:{fontSize:'13px'}},'첫 댓글을 남겨보세요')):null),
-    // Fixed bottom comment bar
     h('div',{style:{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'430px',background:'var(--nav)',borderTop:'1px solid var(--sep)',padding:'10px 16px 30px',display:'flex',gap:'8px',alignItems:'center',zIndex:20}},
       h('input',{id:'cmt',placeholder:'댓글을 입력해 보세요.',style:{flex:1,padding:'10px 14px',borderRadius:'20px',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}),
       h('button',{innerHTML:IC.send,style:{width:'38px',height:'38px',borderRadius:'50%',border:'none',background:'var(--blue)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'#FFF'},
@@ -199,9 +168,6 @@ function rSide(stance,reasons,concern,label,color,bg){
   );
 }
 
-// ═══════════════════════════════════════════
-// SEARCH
-// ═══════════════════════════════════════════
 function rSearch(){
   return h('div',{style:{padding:'52px 20px 100px',background:'var(--bg)',minHeight:'100vh'}},
     h('div',{style:{display:'flex',alignItems:'center',gap:'10px',marginBottom:'20px'}},
@@ -211,18 +177,15 @@ function rSearch(){
       h('span',{innerHTML:IC.search,style:{color:'var(--muted)',flexShrink:0}}),
       h('input',{placeholder:'키워드로 검색',style:{flex:1,padding:'12px 0',border:'none',outline:'none',fontSize:'14px',background:'transparent',color:'var(--text)'},
         onFocus:()=>{S.sf=!0;render();},onBlur:()=>{S.sf=!1;},onInput:e=>{S.sq=e.target.value;},
-        onKeydown:e=>{if(e.key==='Enter'&&S.sq.trim()){loadArticles(null,S.sq);S.tab='home';S.ac='전체';S.af='전체';render();}}})),
+        onKeydown:e=>{if(e.key==='Enter'&&S.sq.trim()){loadArticles(null,S.sq);S.tab='home';S.ac='전체';render();}}})),
     h('div',{style:{fontSize:'12px',fontWeight:'600',color:'var(--muted)',marginBottom:'10px'}},'추천 키워드'),
     h('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px'}},
       ...['대선','부동산','의대','반도체','한미동맹','탄핵','원전','최저임금','검찰','기후'].map(kw=>
         h('button',{style:{padding:'8px 16px',borderRadius:'20px',border:'1px solid var(--border)',background:'var(--card)',color:'var(--text)',fontSize:'13px',fontWeight:'500',cursor:'pointer'},
-          onClick:()=>{S.sq=kw;loadArticles(null,kw);S.tab='home';S.ac='전체';S.af='전체';render();}},kw)))
+          onClick:()=>{S.sq=kw;loadArticles(null,kw);S.tab='home';S.ac='전체';render();}},kw)))
   );
 }
 
-// ═══════════════════════════════════════════
-// TRENDING
-// ═══════════════════════════════════════════
 function rTrending(){
   const sorted=[...S.articles].sort((a,b)=>(b.id||0)-(a.id||0));
   return h('div',{style:{padding:'52px 0 100px'}},
@@ -242,9 +205,6 @@ function rTrending(){
   );
 }
 
-// ═══════════════════════════════════════════
-// PROFILE
-// ═══════════════════════════════════════════
 function rProfile(){
   return h('div',{style:{padding:'52px 20px 100px'}},
     h('div',{style:{textAlign:'center',marginBottom:'28px'}},
@@ -271,9 +231,6 @@ function rProfile(){
   );
 }
 
-// ═══════════════════════════════════════════
-// BOTTOM NAV (SAVE style)
-// ═══════════════════════════════════════════
 function rNav(){
   const tabs=[{k:'home',i:'home',l:'뉴스'},{k:'trending',i:'trend',l:'핫이슈'},{k:'search',i:'search',l:'검색'},{k:'profile',i:'user',l:'내 정보'}];
   return h('div',{style:{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'430px',background:'var(--nav)',borderTop:'1px solid var(--sep)',display:'flex',justifyContent:'space-around',padding:'6px 0 28px',zIndex:50}},
@@ -283,23 +240,15 @@ function rNav(){
       h('span',{style:{fontSize:'10px',fontWeight:S.tab===t.k?'700':'400',color:S.tab===t.k?'var(--text)':'var(--muted)'}},t.l))))
 }
 
-function filteredArticles(){
-  let l=S.articles;
-  if(S.af==='속보')l=l.filter(a=>a.is_breaking);
-  if(S.af==='분석')l=l.filter(a=>a.summary&&!['AI 분석 준비 중','분석 중'].includes(a.summary));
-  return l;
-}
-
 function render(){
   const app=document.getElementById('app');app.innerHTML='';
   if(S.sel){app.appendChild(rDetail());return;}
   if(S.tab==='home'){
     app.appendChild(rHeader());
-    const fa=filteredArticles();
     const list=h('div',{style:{paddingBottom:'100px'}});
     if(S.loading)list.appendChild(h('div',{style:{textAlign:'center',padding:'50px',color:'var(--muted)',fontSize:'13px'}},'불러오는 중...'));
-    else if(!fa.length)list.appendChild(h('div',{style:{textAlign:'center',padding:'50px'}},h('div',{style:{fontSize:'14px',fontWeight:'600',color:'var(--text3)'}},'뉴스가 없습니다'),h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'6px'}},'잠시 후 다시 시도해주세요')));
-    else fa.forEach((a,i)=>list.appendChild(rCard(a,i)));
+    else if(!S.articles.length)list.appendChild(h('div',{style:{textAlign:'center',padding:'50px'}},h('div',{style:{fontSize:'14px',fontWeight:'600',color:'var(--text3)'}},'뉴스가 없습니다'),h('div',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'6px'}},'잠시 후 다시 시도해주세요')));
+    else S.articles.forEach((a,i)=>list.appendChild(rCard(a,i)));
     app.appendChild(list);
   }
   if(S.tab==='search')app.appendChild(rSearch());
