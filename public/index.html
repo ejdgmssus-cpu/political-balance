@@ -72,12 +72,9 @@ async function postCmt(id,t){try{await fetch('/api/comments',{method:'POST',head
 
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
-    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 20px 12px'}},
-      h('div',{style:{display:'flex',alignItems:'baseline',gap:'6px'}},
-        h('span',{style:{fontSize:'20px',fontWeight:'900',letterSpacing:'-0.04em'}},'PB'),
-        h('span',{style:{fontSize:'10px',fontWeight:'600',color:'var(--muted)',letterSpacing:'0.03em'}},'POLITICAL BALANCE')),
-      h('div',{innerHTML:IC.search,style:{cursor:'pointer',color:'var(--muted)',padding:'4px'},
-        onClick:()=>{S.tab='search';render();}})),
+    h('div',{style:{display:'flex',alignItems:'baseline',gap:'6px',padding:'0 20px 12px'}},
+      h('span',{style:{fontSize:'20px',fontWeight:'900',letterSpacing:'-0.04em'}},'PB'),
+      h('span',{style:{fontSize:'10px',fontWeight:'600',color:'var(--muted)',letterSpacing:'0.03em'}},'POLITICAL BALANCE')),
     h('div',{className:'hide-scroll',style:{display:'flex',overflowX:'auto',paddingLeft:'20px',paddingRight:'20px'}},
       ...S.sources.map(s=>h('button',{style:{padding:'10px 14px',border:'none',background:'transparent',fontSize:'13px',fontWeight:S.ac===s?'700':'500',color:S.ac===s?'var(--text)':'var(--muted)',cursor:'pointer',whiteSpace:'nowrap',borderBottom:S.ac===s?'2px solid var(--text)':'2px solid transparent',transition:'all 0.15s'},
         onClick:()=>{S.ac=s;loadArticles(s);}},s)))
@@ -162,9 +159,9 @@ function rSide(stance,reasons,concern,label,color,bg){
   return h('div',{style:{background:bg,borderRadius:'var(--radius)',padding:'14px',borderTop:`2.5px solid ${c}`}},
     h('div',{style:{fontSize:'12px',fontWeight:'700',color,textAlign:'center',marginBottom:'8px'}},`${label} 입장`),
     h('div',{style:{fontSize:'12.5px',fontWeight:'600',color:'var(--text)',marginBottom:'10px',padding:'8px 10px',background:'rgba(128,128,128,0.04)',borderRadius:'var(--radius-sm)',lineHeight:'1.55'}},stance),
-    ...reasons.map(r=>h('div',{style:{fontSize:'12px',color:'var(--text2)',marginBottom:'5px',paddingLeft:'14px',position:'relative',lineHeight:'1.55'}},
-      h('span',{style:{position:'absolute',left:'3px',top:'0',color,fontSize:'7px',lineHeight:'1.55'}},'●'),r)),
-    h('div',{style:{marginTop:'10px',padding:'8px 10px',background:'rgba(128,128,128,0.04)',borderRadius:'var(--radius-sm)',fontSize:'11.5px',color:'var(--text3)',lineHeight:'1.55'}},`주의: ${concern}`)
+    ...reasons.map(r=>h('div',{style:{fontSize:'12px',color:'var(--text2)',marginBottom:'5px',paddingLeft:'10px',position:'relative',lineHeight:'1.55'}},
+      h('span',{style:{position:'absolute',left:'0',top:'0',color:'var(--muted)',fontSize:'12px',lineHeight:'1.55'}},'–'),r)),
+    h('div',{style:{marginTop:'10px',padding:'8px 10px',background:'rgba(128,128,128,0.04)',borderRadius:'var(--radius-sm)',fontSize:'11.5px',color:'var(--text3)',lineHeight:'1.55'}},`${concern}`)
   );
 }
 
