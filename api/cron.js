@@ -38,11 +38,7 @@ export default async function handler(req, res) {
 
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
 
-    try {
-      newArticles = await deduplicateAll(newArticles, existingTitles, GEMINI_KEY);
-    } catch(e) {}
-
-    if (newArticles.length === 0) return res.status(200).json({ message: "중복 제거 후 새 기사 없음", count: 0 });
+  
 
     const toAnalyze = newArticles.slice(0, 2);
     const analyzed = [];
