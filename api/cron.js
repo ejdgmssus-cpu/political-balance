@@ -38,7 +38,6 @@ export default async function handler(req, res) {
 
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
 
-    // AI 중복 제거: 새 기사끼리 + 기존 기사와 비교
     try {
       newArticles = await deduplicateAll(newArticles, existingTitles, GEMINI_KEY);
     } catch(e) {}
@@ -52,7 +51,7 @@ export default async function handler(req, res) {
         const analysis = await analyzeWithGemini(article.title, article.description, article.category, GEMINI_KEY);
         analyzed.push({ ...article, ...analysis });
       } catch (e) {
-        analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["곧 업데이트"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["곧 업데이트"]', conservative_concern: "-", common_ground: "-" });
+        analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-" });
       }
       await new Promise(r => setTimeout(r, 2000));
     }
@@ -102,34 +101,31 @@ ${JSON.stringify(allTitles)}
 }
 
 async function analyzeWithGemini(title, description, category, apiKey) {
-  const prompt = `당신은 한국 정치·시사 전문 분석가입니다. 한국 정치 상황에 대한 깊은 이해를 바탕으로 분석하세요.
+  const prompt = `한국 정치·시사 전문 분석가로서 아래 뉴스를 분석하세요.
 
-## 현재 한국 정치 배경 (2025-2026)
-- 윤석열 대통령은 2024년 12월 비상계엄 선포 후 탄핵되어 2025년 4월 헌법재판소에서 파면 확정됨
-- 현재 대통령 권한대행 체제이며 조기 대선이 예정됨
-- 여당: 국민의힘 (보수), 야당: 더불어민주당 (진보/중도진보)
-- 주요 보수 인물: 한동훈, 홍준표, 오세훈, 이준석, 김기현, 나경원
-- 주요 진보 인물: 이재명, 박찬대, 정청래, 김동연, 이낙연
-- 보수 진영 성향: 한미동맹 중시, 시장경제, 검찰 독립, 원전 확대, 북한 압박, 규제 완화
-- 진보 진영 성향: 남북대화, 복지 확대, 검찰 개혁, 재생에너지, 노동권 강화, 재벌 규제
-- 진보 매체: 한겨레, 경향신문, 오마이뉴스, JTBC
-- 보수 매체: 조선일보, 동아일보, 중앙일보, TV조선, 채널A
-- 중립 매체: 연합뉴스, KBS, MBC, SBS, YTN
+## 한국 정치 배경
+- 윤석열 대통령 탄핵 후 파면, 현재 권한대행 체제, 조기 대선 예정
+- 여당: 국민의힘(보수), 야당: 더불어민주당(진보)
+- 보수 성향: 한미동맹, 시장경제, 원전 확대, 북한 압박
+- 진보 성향: 남북대화, 복지 확대, 재생에너지, 노동권 강화
 
-## 분석할 뉴스
+## 뉴스
 제목: "${title}"
-본문 요약: "${description}"
+본문: "${description}"
 카테고리: ${category}
 
-## 분석 지침
-1. 제목과 본문을 모두 읽고 사건의 정확한 맥락을 파악하세요 (이미 일어난 일인지, 진행 중인지, 예정인지)
-2. 등장 인물이 어떤 정당/진영인지 정확히 파악하세요
-3. 진보와 보수가 이 사안을 실제로 어떻게 바라보는지, 각 진영의 논리와 가치관에 기반하여 분석하세요
-4. 단순히 "찬성/반대"가 아니라, 왜 그런 입장을 취하는지 깊이 있게 설명하세요
-5. 요약은 사실 관계를 정확히 반영하세요 (예: "파면 요구" vs "파면 이후 시위"를 구분)
+## 중요: 글자수 제한을 반드시 지켜주세요!
+- summary: 핵심만 1-2문장, 최대 80자
+- progressive_stance: 진보 입장 한 문장, 최대 50자
+- conservative_stance: 보수 입장 한 문장, 최대 50자
+- progressive_reasons: 이유 2개, 각 최대 25자
+- conservative_reasons: 이유 2개, 각 최대 25자
+- progressive_concern: 우려 한 문장, 최대 35자
+- conservative_concern: 우려 한 문장, 최대 35자
+- common_ground: 공통점 한 문장, 최대 50자
 
 JSON만 응답:
-{"summary":"사실 관계를 정확히 반영한 핵심 요약 2-3문장","progressive_stance":"진보 진영이 이 사안을 바라보는 실제 입장 (구체적으로)","progressive_reasons":["한국 진보의 가치관에 기반한 구체적 이유1","이유2","이유3"],"progressive_concern":"진보 진영의 구체적 우려","conservative_stance":"보수 진영이 이 사안을 바라보는 실제 입장 (구체적으로)","conservative_reasons":["한국 보수의 가치관에 기반한 구체적 이유1","이유2","이유3"],"conservative_concern":"보수 진영의 구체적 우려","common_ground":"양쪽이 동의할 수 있는 부분"}`;
+{"summary":"80자 이내 핵심 요약","progressive_stance":"50자 이내","progressive_reasons":["25자 이내","25자 이내"],"progressive_concern":"35자 이내","conservative_stance":"50자 이내","conservative_reasons":["25자 이내","25자 이내"],"conservative_concern":"35자 이내","common_ground":"50자 이내"}`;
 
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -143,7 +139,39 @@ JSON만 응답:
 }
 
 function extractSource(url) {
-  try { const h = new URL(url).hostname; const m = {"www.chosun.com":"조선일보","www.donga.com":"동아일보","www.joongang.co.kr":"중앙일보","www.hani.co.kr":"한겨레","www.khan.co.kr":"경향신문","www.hankyung.com":"한국경제","www.mk.co.kr":"매일경제","news.kbs.co.kr":"KBS","imnews.imbc.com":"MBC","news.sbs.co.kr":"SBS","news.jtbc.co.kr":"JTBC","www.yna.co.kr":"연합뉴스","www.ytn.co.kr":"YTN","www.newsis.com":"뉴시스","newsis.com":"뉴시스","www.edaily.co.kr":"이데일리","www.mt.co.kr":"머니투데이","www.segye.com":"세계일보","www.ohmynews.com":"오마이뉴스","news1.kr":"뉴스1","www.news1.kr":"뉴스1"}; return m[h] || h.replace("www.","").split(".")[0]; } catch { return "뉴스"; }
+  try {
+    const h = new URL(url).hostname.replace('www.','');
+    const m = {
+      "chosun.com":"조선일보","biz.chosun.com":"조선비즈",
+      "donga.com":"동아일보","joongang.co.kr":"중앙일보",
+      "hani.co.kr":"한겨레","khan.co.kr":"경향신문",
+      "hankyung.com":"한국경제","mk.co.kr":"매일경제",
+      "mt.co.kr":"머니투데이","sedaily.com":"서울경제",
+      "news.kbs.co.kr":"KBS","imnews.imbc.com":"MBC",
+      "news.sbs.co.kr":"SBS","news.jtbc.co.kr":"JTBC",
+      "yna.co.kr":"연합뉴스","ytn.co.kr":"YTN",
+      "newsis.com":"뉴시스","news1.kr":"뉴스1",
+      "edaily.co.kr":"이데일리","segye.com":"세계일보",
+      "ohmynews.com":"오마이뉴스","hankookilbo.com":"한국일보",
+      "kmib.co.kr":"국민일보","munhwa.com":"문화일보",
+      "nocutnews.co.kr":"노컷뉴스","newspim.com":"뉴스핌",
+      "tf.co.kr":"더팩트","tfmedia.co.kr":"TF미디어",
+      "dailyan.com":"데일리안","mediatoday.co.kr":"미디어오늘",
+      "pressian.com":"프레시안","sisajournal.com":"시사저널",
+      "sisain.co.kr":"시사IN","thebell.co.kr":"더벨",
+      "bloter.net":"블로터","zdnet.co.kr":"ZDNet",
+      "etnews.com":"전자신문","dt.co.kr":"디지털타임스",
+      "asiae.co.kr":"아시아경제","fnnews.com":"파이낸셜뉴스",
+      "herald.co.kr":"헤럴드경제","heraldcorp.com":"헤럴드경제",
+      "bbc.com":"BBC","reuters.com":"로이터",
+      "kpinews.co.kr":"KP뉴스","m-i.kr":"매일일보",
+      "naver.com":"네이버뉴스","daum.net":"다음뉴스"
+    };
+    for (const [domain, name] of Object.entries(m)) {
+      if (h === domain || h.endsWith('.' + domain)) return name;
+    }
+    return h.split('.')[0];
+  } catch { return "뉴스"; }
 }
 
 function detectCategory(text) {
