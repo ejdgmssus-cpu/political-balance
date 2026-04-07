@@ -72,7 +72,7 @@ async function postCmt(id,t){try{await fetch('/api/comments',{method:'POST',head
 
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
-    h('div',{style:{display:'flex',alignItems:'center',gap:'8px',padding:'0 20px 12px'}}
+    h('div',{style:{display:'flex',alignItems:'center',gap:'8px',padding:'0 20px 12px'}},
       h('img',{src:'/logo.png',style:{width:'32px',height:'32px',borderRadius:'8px',background:'#000',padding:'4px'}})),
     h('div',{className:'hide-scroll',style:{display:'flex',overflowX:'auto',paddingLeft:'20px',paddingRight:'20px'}},
       ...S.sources.map(s=>h('button',{style:{padding:'10px 14px',border:'none',background:'transparent',fontSize:'13px',fontWeight:S.ac===s?'700':'500',color:S.ac===s?'var(--text)':'var(--muted)',cursor:'pointer',whiteSpace:'nowrap',borderBottom:S.ac===s?'2px solid var(--text)':'2px solid transparent',transition:'all 0.15s'},
