@@ -37,9 +37,20 @@ export default async function handler(req, res) {
     for (const article of toAnalyze) {
       try {
         const analysis = await analyzeWithGemini(article.title, article.description, article.category, GEMINI_KEY);
-        analyzed.push({ ...article, ...analysis });
+        // 썸네일 시도
+        let thumbnail = "";
+        try {
+          const pageRes = await fetch(article.link, { headers: { "User-Agent": "Mozilla/5.0" }, redirect: "follow" });
+          if (pageRes.ok) {
+            const html = await pageRes.text();
+            const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+            if (ogMatch) thumbnail = ogMatch[1];
+          }
+        } catch(e) {}
+        analyzed.push({ ...article, ...analysis, thumbnail });
       } catch (e) { console.error("Gemini error:", e.message);
-        analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-" });
+        analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail: "" });
       }
       await new Promise(r => setTimeout(r, 500));
     }
@@ -55,32 +66,38 @@ export default async function handler(req, res) {
 }
 function cleanHtml(s) { return s.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&apos;/g, "'"); }
 async function analyzeWithGemini(title, description, category, apiKey) {
-  const prompt = `한국 정치·시사 전문 분석가로서 아래 뉴스를 분석하세요.
-## 한국 정치 배경
-- 윤석열 대통령 탄핵 후 파면, 현재 권한대행 체제, 조기 대선 예정
-- 여당: 국민의힘(보수), 야당: 더불어민주당(진보)
-- 보수 성향: 한미동맹, 시장경제, 원전 확대, 북한 압박
-- 진보 성향: 남북대화, 복지 확대, 재생에너지, 노동권 강화
-## 뉴스
+  const prompt = `당신은 한국 정치·시사 뉴스 분석 AI입니다.
+아래 뉴스를 읽고, 현재 한국 정치 상황을 반영하여 진보와 보수 양쪽 시각으로 분석하세요.
+정치 배경은 직접 판단하세요 (현재 집권당, 야당, 주요 정치인 등을 스스로 파악).
+
+## 분석할 뉴스
 제목: "${title}"
 본문: "${description}"
 카테고리: ${category}
-## 중요: 글자수 제한을 반드시 지켜주세요!
-- summary: 핵심만 1-2문장, 최대 80자
-- progressive_stance: 진보 입장 한 문장, 최대 50자
-- conservative_stance: 보수 입장 한 문장, 최대 50자
-- progressive_reasons: 이유 2개, 각 최대 25자
-- conservative_reasons: 이유 2개, 각 최대 25자
-- progressive_concern: 우려 한 문장, 최대 35자
-- conservative_concern: 우려 한 문장, 최대 35자
-- common_ground: 공통점 한 문장, 최대 50자
-JSON만 응답:
-{"summary":"80자 이내 핵심 요약","progressive_stance":"50자 이내","progressive_reasons":["25자 이내","25자 이내"],"progressive_concern":"35자 이내","conservative_stance":"50자 이내","conservative_reasons":["25자 이내","25자 이내"],"conservative_concern":"35자 이내","common_ground":"50자 이내"}`;
+
+## 반드시 지킬 규칙
+1. 모든 문장은 "~함", "~임", "~됨" 체로 통일 (예: "비판함", "주장임", "우려됨")
+2. 글자수 제한을 반드시 지킴
+3. 진보/보수 입장은 해당 진영이 실제로 취할 입장을 근거 있게 작성
+
+## 글자수 제한
+- summary: 핵심 요약 1문장, 최대 60자
+- progressive_stance: 진보 입장 1문장, 최대 40자
+- conservative_stance: 보수 입장 1문장, 최대 40자
+- progressive_reasons: 근거 2개, 각 20자 이내
+- conservative_reasons: 근거 2개, 각 20자 이내
+- progressive_concern: 우려 1문장, 최대 30자
+- conservative_concern: 우려 1문장, 최대 30자
+- common_ground: 공통점 1문장, 최대 40자
+
+JSON만 응답 (다른 텍스트 없이):
+{"summary":"60자 이내","progressive_stance":"40자 이내","progressive_reasons":["20자 이내","20자 이내"],"progressive_concern":"30자 이내","conservative_stance":"40자 이내","conservative_reasons":["20자 이내","20자 이내"],"conservative_concern":"30자 이내","common_ground":"40자 이내"}`;
+
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: "application/json" } })
   });
-  if (!r.ok) { const errBody = await r.text(); throw new Error(`Gemini ${r.status}: ${errBody.slice(0, 200)}`); }
+  if (!r.ok) throw new Error(`Gemini ${r.status}`);
   const data = await r.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
   const p = JSON.parse(text.replace(/```json|```/g, "").trim());
@@ -89,7 +106,7 @@ JSON만 응답:
 function extractSource(url) {
   try {
     const h = new URL(url).hostname.replace('www.','');
-    const m = {"chosun.com":"조선일보","biz.chosun.com":"조선비즈","donga.com":"동아일보","joongang.co.kr":"중앙일보","hani.co.kr":"한겨레","khan.co.kr":"경향신문","hankyung.com":"한국경제","mk.co.kr":"매일경제","mt.co.kr":"머니투데이","sedaily.com":"서울경제","news.kbs.co.kr":"KBS","imnews.imbc.com":"MBC","news.sbs.co.kr":"SBS","news.jtbc.co.kr":"JTBC","yna.co.kr":"연합뉴스","ytn.co.kr":"YTN","newsis.com":"뉴시스","news1.kr":"뉴스1","edaily.co.kr":"이데일리","segye.com":"세계일보","ohmynews.com":"오마이뉴스","hankookilbo.com":"한국일보","kmib.co.kr":"국민일보","munhwa.com":"문화일보","nocutnews.co.kr":"노컷뉴스","newspim.com":"뉴스핌","tf.co.kr":"더팩트","tfmedia.co.kr":"TF미디어","dailyan.com":"데일리안","mediatoday.co.kr":"미디어오늘","pressian.com":"프레시안","sisajournal.com":"시사저널","sisain.co.kr":"시사IN","thebell.co.kr":"더벨","bloter.net":"블로터","zdnet.co.kr":"ZDNet","etnews.com":"전자신문","dt.co.kr":"디지털타임스","asiae.co.kr":"아시아경제","fnnews.com":"파이낸셜뉴스","herald.co.kr":"헤럴드경제","heraldcorp.com":"헤럴드경제","bbc.com":"BBC","reuters.com":"로이터","kpinews.co.kr":"KP뉴스","m-i.kr":"매일일보","naver.com":"네이버뉴스","daum.net":"다음뉴스","idaegu.com":"아이대구","dkilbo.com":"대구일보","inews24.com":"아이뉴스24"};
+    const m = {"chosun.com":"조선일보","biz.chosun.com":"조선비즈","donga.com":"동아일보","joongang.co.kr":"중앙일보","hani.co.kr":"한겨레","khan.co.kr":"경향신문","hankyung.com":"한국경제","mk.co.kr":"매일경제","mt.co.kr":"머니투데이","sedaily.com":"서울경제","news.kbs.co.kr":"KBS","imnews.imbc.com":"MBC","news.sbs.co.kr":"SBS","news.jtbc.co.kr":"JTBC","yna.co.kr":"연합뉴스","ytn.co.kr":"YTN","newsis.com":"뉴시스","news1.kr":"뉴스1","edaily.co.kr":"이데일리","segye.com":"세계일보","ohmynews.com":"오마이뉴스","hankookilbo.com":"한국일보","kmib.co.kr":"국민일보","munhwa.com":"문화일보","nocutnews.co.kr":"노컷뉴스","newspim.com":"뉴스핌","tf.co.kr":"더팩트","tfmedia.co.kr":"TF미디어","dailyan.com":"데일리안","mediatoday.co.kr":"미디어오늘","pressian.com":"프레시안","sisajournal.com":"시사저널","sisain.co.kr":"시사IN","thebell.co.kr":"더벨","bloter.net":"블로터","zdnet.co.kr":"ZDNet","etnews.com":"전자신문","dt.co.kr":"디지털타임스","asiae.co.kr":"아시아경제","fnnews.com":"파이낸셜뉴스","herald.co.kr":"헤럴드경제","heraldcorp.com":"헤럴드경제","bbc.com":"BBC","reuters.com":"로이터","kpinews.co.kr":"KP뉴스","m-i.kr":"매일일보","naver.com":"네이버뉴스","daum.net":"다음뉴스","idaegu.com":"아이대구","dkilbo.com":"대구일보","inews24.com":"아이뉴스24","imaeil.com":"매일신문","kado.net":"강원도민일보","joongdo.co.kr":"중도일보","jjan.kr":"전북일보","gjdream.com":"광주드림"};
     for (const [domain, name] of Object.entries(m)) {
       if (h === domain || h.endsWith('.' + domain)) return name;
     }
