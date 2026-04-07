@@ -37,18 +37,21 @@ export default async function handler(req, res) {
     for (const article of toAnalyze) {
       try {
         const analysis = await analyzeWithGemini(article.title, article.description, article.category, GEMINI_KEY);
-        // 썸네일 시도
         let thumbnail = "";
+        let ogDesc = "";
         try {
           const pageRes = await fetch(article.link, { headers: { "User-Agent": "Mozilla/5.0" }, redirect: "follow" });
           if (pageRes.ok) {
             const html = await pageRes.text();
-            const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+            const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
               || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-            if (ogMatch) thumbnail = ogMatch[1];
+            if (ogImg) thumbnail = ogImg[1];
+            const ogDsc = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
+            if (ogDsc) ogDesc = ogDsc[1];
           }
         } catch(e) {}
-        analyzed.push({ ...article, ...analysis, thumbnail });
+        analyzed.push({ ...article, ...analysis, thumbnail, description: ogDesc || article.description });
       } catch (e) { console.error("Gemini error:", e.message);
         analyzed.push({ ...article, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail: "" });
       }
