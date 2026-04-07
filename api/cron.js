@@ -123,7 +123,7 @@ async function analyzeWithGemini(title, description, category, apiKey) {
 JSON만 응답:
 {"summary":"80자 이내 핵심 요약","progressive_stance":"50자 이내","progressive_reasons":["25자 이내","25자 이내"],"progressive_concern":"35자 이내","conservative_stance":"50자 이내","conservative_reasons":["25자 이내","25자 이내"],"conservative_concern":"35자 이내","common_ground":"50자 이내"}`;
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
   });
