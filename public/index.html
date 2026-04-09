@@ -65,6 +65,8 @@ const IC={
 function tAgo(d){const s=Math.floor((new Date()-new Date(d))/1000);if(s<60)return'방금 전';if(s<3600)return`${Math.floor(s/60)}분 전`;if(s<86400)return`${Math.floor(s/3600)}시간 전`;return`${Math.floor(s/86400)}일 전`}
 function h(t,a={},...c){const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else if(k.startsWith('on')){if(typeof v==='function')e.addEventListener(k.slice(2).toLowerCase(),v);else e.setAttribute(k,v);}else if(k==='innerHTML')e.innerHTML=v;else if(k==='className')e.className=v;else e.setAttribute(k,v)}for(const ch of c.flat()){if(ch==null)continue;e.appendChild(typeof ch==='string'?document.createTextNode(ch):ch)}return e}
 function fv(n){if(!n)return'0';if(n>=10000)return(n/10000).toFixed(1)+'만';if(n>=1000)return(n/1000).toFixed(1)+'K';return String(n)}
+const SRC_MAP={newsfreezone:'뉴스프리존',idaegu:'아이대구',dkilbo:'대구일보',inews24:'아이뉴스24',imaeil:'매일신문',newspim:'뉴스핌',nocutnews:'노컷뉴스',dailyan:'데일리안',mediatoday:'미디어오늘',pressian:'프레시안',bloter:'블로터',newsis:'뉴시스',news1:'뉴스1',edaily:'이데일리'};
+function fixSrc(s){return SRC_MAP[s]||s;}
 
 async function loadArticles(cat,search){S.loading=!0;render();try{let u='/api/articles?limit=30';if(cat&&cat!=='전체')u+=`&category=${encodeURIComponent(cat)}`;if(search)u+=`&search=${encodeURIComponent(search)}`;const r=await fetch(u);S.articles=r.ok?await r.json():[];}catch(e){S.articles=[];}S.loading=!1;render();}
 async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/api/comments?article_id=${id}`);S.comments=r.ok?await r.json():[];}catch(e){S.comments=[];}S.cmtLoading=!1;render();}
@@ -87,7 +89,7 @@ function rCard(a,i){
   return h('div',{style:{background:'var(--card)',padding:'16px 20px',borderBottom:'1px solid var(--border)',cursor:'pointer',animation:`fadeUp 0.3s ease ${i*0.03}s both`},
     onClick:()=>{S.sel=a;S.stats.read++;loadCmt(a.id);render();}},
     h('div',{style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'8px'}},
-      h('span',{style:{fontSize:'11px',fontWeight:'700',color:'#FFF',background:cc[0],padding:'2px 8px',borderRadius:'4px',lineHeight:'1.5'}},a.source||a.category),
+      h('span',{style:{fontSize:'11px',fontWeight:'700',color:'#FFF',background:cc[0],padding:'2px 8px',borderRadius:'4px',lineHeight:'1.5'}},fixSrc(a.source)||a.category),
       a.source&&a.category?h('span',{style:{fontSize:'11px',color:'var(--muted)'}},`· ${a.category}`):null,
       brk?h('span',{style:{fontSize:'10px',fontWeight:'700',color:'var(--breaking)'}},'· 속보'):null,
       h('span',{style:{fontSize:'11px',color:'var(--muted)',marginLeft:'auto'}},tAgo(a.created_at))),
@@ -95,7 +97,7 @@ function rCard(a,i){
       h('div',{style:{flex:1,minWidth:0}},
         h('div',{style:{fontSize:'15px',fontWeight:'700',lineHeight:'1.55'}},a.title)),
       a.thumbnail?h('div',{style:{width:'80px',height:'80px',borderRadius:'var(--radius-sm)',overflow:'hidden',flexShrink:0,background:'var(--ghost)'}},
-        h('img',{src:a.thumbnail,style:{width:'100%',height:'100%',objectFit:'cover'}})):null),
+        h('img',{src:a.thumbnail,style:{width:'100%',height:'100%',objectFit:'cover'},onError:e=>{e.target.parentElement.style.display='none';}})):null),
     has?h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px',marginBottom:'8px'}},
       h('div',{style:{padding:'8px 10px',borderRadius:'var(--radius-sm)',background:'var(--left-bg)',borderLeft:'2.5px solid var(--left-color)'}},
         h('div',{style:{fontSize:'10px',fontWeight:'700',color:'var(--left-color)',marginBottom:'3px'}},'진보'),
@@ -120,7 +122,7 @@ function rDetail(){
       h('div',{style:{marginLeft:'auto'},innerHTML:IC.bmark})),
     h('div',{style:{padding:'16px 20px 0'}},
       h('div',{style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'8px'}},
-        h('span',{style:{fontSize:'11px',fontWeight:'700',color:'#FFF',background:cc[0],padding:'2px 8px',borderRadius:'4px'}},a.source||a.category),
+        h('span',{style:{fontSize:'11px',fontWeight:'700',color:'#FFF',background:cc[0],padding:'2px 8px',borderRadius:'4px'}},fixSrc(a.source)||a.category),
         a.is_breaking?h('span',{style:{fontSize:'10px',fontWeight:'700',color:'var(--breaking)'}},'· 속보'):null),
       h('div',{style:{fontSize:'12px',color:'var(--muted)',marginBottom:'12px'}},new Date(a.created_at).toLocaleString('ko-KR')),
       h('h2',{style:{fontSize:'19px',fontWeight:'800',lineHeight:'1.55',letterSpacing:'-0.02em'}},a.title)),
@@ -203,7 +205,8 @@ function rTrending(){
         h('div',{style:{flex:1,minWidth:0}},
           h('div',{style:{fontSize:'13.5px',fontWeight:'700',lineHeight:'1.5',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical'}},n.title),
           h('div',{style:{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'var(--muted)',marginTop:'4px'}},
-            h('span',{style:{fontWeight:'600',color:cc[0]}},n.category),h('span',{},'·'),h('span',{},n.source))))})
+            h('span',{style:{fontWeight:'600',color:cc[0]}},n.category),h('span',{},'·'),h('span',{},fixSrc(n.source))))})
+
   );
 }
 
