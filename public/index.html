@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>균형잡힌 시각</title>
+<title>AXIS</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
@@ -73,8 +73,7 @@ async function postCmt(id,t){try{await fetch('/api/comments',{method:'POST',head
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
     h('div',{style:{display:'flex',alignItems:'center',gap:'8px',padding:'0 20px 12px'}},
-      h('img',{src:'/logo.png',style:{width:'28px',height:'28px',borderRadius:'6px'}}),
-      h('span',{style:{fontSize:'17px',fontWeight:'800',letterSpacing:'-0.03em'}},'균형잡힌 시각')),
+      h('img',{src:'/logo.png',style:{width:'32px',height:'32px',borderRadius:'8px'}})),
     h('div',{className:'hide-scroll',style:{display:'flex',overflowX:'auto',paddingLeft:'20px',paddingRight:'20px'}},
       ...S.sources.map(s=>h('button',{style:{padding:'10px 14px',border:'none',background:'transparent',fontSize:'13px',fontWeight:S.ac===s?'700':'500',color:S.ac===s?'var(--text)':'var(--muted)',cursor:'pointer',whiteSpace:'nowrap',borderBottom:S.ac===s?'2px solid var(--text)':'2px solid transparent',transition:'all 0.15s'},
         onClick:()=>{S.ac=s;loadArticles(s);}},s)))
