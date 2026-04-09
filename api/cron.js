@@ -40,7 +40,10 @@ export default async function handler(req, res) {
         let thumbnail = "";
         let ogDesc = "";
         try {
-          const pageRes = await fetch(article.link, { headers: { "User-Agent": "Mozilla/5.0" }, redirect: "follow" });
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 3000);
+          const pageRes = await fetch(article.link, { headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" }, redirect: "follow", signal: ctrl.signal });
+          clearTimeout(tid);
           if (pageRes.ok) {
             const html = await pageRes.text();
             const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
@@ -62,7 +65,28 @@ export default async function handler(req, res) {
       body: JSON.stringify(analyzed)
     });
     if (!insertRes.ok) console.error("Insert error:", await insertRes.text());
-    res.status(200).json({ message: "완료", inserted: analyzed.length });
+    // Retry unanalyzed articles
+    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI 분석 준비 중&select=id,title,description,category,link&limit=1`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+    const pending = pendingRes.ok ? await pendingRes.json() : [];
+    for (const p of pending) {
+      try {
+        const analysis = await analyzeWithGemini(p.title, p.description, p.category, GEMINI_KEY);
+        let thumbnail = "";
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 3000);
+          const pageRes = await fetch(p.link, { headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" }, redirect: "follow", signal: ctrl.signal });
+          clearTimeout(tid);
+          if (pageRes.ok) { const html = await pageRes.text(); const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i); if (ogImg) thumbnail = ogImg[1]; }
+        } catch(e) {}
+        await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${p.id}`, {
+          method: "PATCH", headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ ...analysis, thumbnail })
+        });
+      } catch(e) { console.error("Retry error:", e.message); }
+    }
+    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: pending.length });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
