@@ -237,19 +237,17 @@ function rTrending(){
 function rProfile(){
   if(!S.user) return rLoginPage();
   const nick=getNick();
-  const avatar=S.user.user_metadata?.avatar_url||S.user.user_metadata?.picture||null;
+  if(!localStorage.getItem('dasi_nick')) return rSetupNick();
   return h('div',{style:{padding:'52px 20px 100px'}},
     // 프로필 헤더
     h('div',{style:{textAlign:'center',marginBottom:'24px'}},
-      avatar?h('img',{src:avatar,style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',display:'block',objectFit:'cover'}}):
       h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'24px',fontWeight:'800'}},nick[0]),
-      h('h2',{style:{fontSize:'18px',fontWeight:'800'}},nick),
-      h('p',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'3px'}},S.user.email||'')),
-    // 닉네임 설정
+      h('h2',{style:{fontSize:'18px',fontWeight:'800'}},nick)),
+    // 닉네임 변경
     h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'14px',border:'1px solid var(--border)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}},
-      h('input',{id:'nickInput',placeholder:'닉네임 설정',value:nick,style:{flex:1,padding:'8px 12px',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}),
+      h('input',{id:'nickInput',placeholder:'닉네임 변경',value:nick,style:{flex:1,padding:'8px 12px',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}),
       h('button',{style:{padding:'8px 16px',borderRadius:'var(--radius-sm)',border:'none',background:'var(--blue)',color:'#FFF',fontSize:'12px',fontWeight:'700',cursor:'pointer'},
-        onClick:()=>{const v=document.getElementById('nickInput')?.value?.trim();if(v){setNick(v);render();}}},'저장')),
+        onClick:()=>{const v=document.getElementById('nickInput')?.value?.trim();if(v){setNick(v);render();}}},'변경')),
     // 통계
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'20px'}},
       ...[{l:'읽은 기사',v:S.stats.read},{l:'남긴 댓글',v:S.stats.comments}].map(s=>
@@ -270,6 +268,16 @@ function rProfile(){
     h('button',{style:{width:'100%',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--card)',fontSize:'14px',fontWeight:'500',color:'var(--red)',cursor:'pointer'},
       onClick:logout},'로그아웃')
   );
+}
+
+function rSetupNick(){
+  return h('div',{style:{padding:'52px 20px 100px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh'}},
+    h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',marginBottom:'20px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'28px',fontWeight:'800'}},'?'),
+    h('h2',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'6px'}},'닉네임을 정해주세요'),
+    h('p',{style:{fontSize:'13px',color:'var(--muted)',marginBottom:'30px'}},'댓글에 표시될 이름이에요'),
+    h('input',{id:'setupNick',placeholder:'닉네임 입력',style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'15px',color:'var(--text)',outline:'none',textAlign:'center',marginBottom:'16px'}}),
+    h('button',{style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'none',background:'var(--blue)',color:'#FFF',fontSize:'15px',fontWeight:'700',cursor:'pointer'},
+      onClick:()=>{const v=document.getElementById('setupNick')?.value?.trim();if(v){setNick(v);render();}}},'시작하기'));
 }
 
 function rLoginPage(){
