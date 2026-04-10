@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const existingLinks = new Set(existing.map(e => e.link));
     let newArticles = cleaned.filter(a => !existingLinks.has(a.link));
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
-    const toAnalyze = newArticles.slice(0, 0);
+    const toAnalyze = newArticles.slice(0, 2);
     const analyzed = [];
     for (const article of toAnalyze) {
       try {
@@ -66,10 +66,10 @@ export default async function handler(req, res) {
     });
     if (!insertRes.ok) console.error("Insert error:", await insertRes.text());
     // Retry unanalyzed articles
-    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=2`,
+    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=1`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     const pending = pendingRes.ok ? await pendingRes.json() : [];
-    let retriedOk = 0; const retriedErrors = [];
+    let retriedOk = 0;
     for (const p of pending) {
       try {
         const analysis = await analyzeWithGemini(p.title, p.description, p.category, GEMINI_KEY);
@@ -86,9 +86,9 @@ export default async function handler(req, res) {
           body: JSON.stringify({ ...analysis, thumbnail })
         });
         if (patchRes.ok) retriedOk++; else console.error("Patch error:", await patchRes.text());
-      } catch(e) { console.error("Retry error:", e.message); retriedErrors.push(e.message); }
+      } catch(e) { console.error("Retry error:", e.message); }
     }
-    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: retriedOk, pending: pending.length, errors: retriedErrors });
+    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: retriedOk });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
