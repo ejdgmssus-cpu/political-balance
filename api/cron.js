@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=2`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     const pending = pendingRes.ok ? await pendingRes.json() : [];
-    let retriedOk = 0;
+    let retriedOk = 0; const retriedErrors = [];
     for (const p of pending) {
       try {
         const analysis = await analyzeWithGemini(p.title, p.description, p.category, GEMINI_KEY);
@@ -86,9 +86,9 @@ export default async function handler(req, res) {
           body: JSON.stringify({ ...analysis, thumbnail })
         });
         if (patchRes.ok) retriedOk++; else console.error("Patch error:", await patchRes.text());
-      } catch(e) { console.error("Retry error:", e.message); }
+      } catch(e) { console.error("Retry error:", e.message); retriedErrors.push(e.message); }
     }
-    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: retriedOk, pending: pending.length });
+    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: retriedOk, pending: pending.length, errors: retriedErrors });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
