@@ -60,7 +60,7 @@ async function initAuth(){
   render();
 }
 async function loginKakao(){
-  await sb.auth.signInWithOAuth({provider:'kakao',options:{redirectTo:window.location.origin}});
+  await sb.auth.signInWithOAuth({provider:'kakao',options:{redirectTo:window.location.origin,scopes:'profile_nickname profile_image'}});
 }
 async function loginGoogle(){
   await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
