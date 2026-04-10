@@ -69,6 +69,7 @@ export default async function handler(req, res) {
     const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=2`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     const pending = pendingRes.ok ? await pendingRes.json() : [];
+    let retriedOk = 0;
     for (const p of pending) {
       try {
         const analysis = await analyzeWithGemini(p.title, p.description, p.category, GEMINI_KEY);
@@ -80,13 +81,14 @@ export default async function handler(req, res) {
           clearTimeout(tid);
           if (pageRes.ok) { const html = await pageRes.text(); const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i); if (ogImg) thumbnail = ogImg[1]; }
         } catch(e) {}
-        await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${p.id}`, {
+        const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${p.id}`, {
           method: "PATCH", headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({ ...analysis, thumbnail })
         });
+        if (patchRes.ok) retriedOk++; else console.error("Patch error:", await patchRes.text());
       } catch(e) { console.error("Retry error:", e.message); }
     }
-    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: pending.length });
+    res.status(200).json({ message: "완료", inserted: analyzed.length, retried: retriedOk, pending: pending.length });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
