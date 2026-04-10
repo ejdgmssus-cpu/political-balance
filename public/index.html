@@ -344,7 +344,7 @@ function render(){
   }
   if(S.tab==='search')app.appendChild(rSearch());
   if(S.tab==='trending')app.appendChild(rTrending());
-  if(S.tab==='profile')app.appendChild(rProfile());
+  if(S.tab==='profile'){if(S.user&&localStorage.getItem('dasi_nick')&&S.myComments.length===0&&!S.myCmtLoading)loadMyCmt();app.appendChild(rProfile());}
   if(!S.sel)app.appendChild(rNav());
 }
 loadArticles('전체');
