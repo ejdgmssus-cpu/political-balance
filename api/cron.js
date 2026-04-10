@@ -48,20 +48,21 @@ export default async function handler(req, res) {
     let newArticles = cleaned.filter(a => !existingLinks.has(a.link));
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
 
-    const toAnalyze = newArticles.slice(0, 2);
+    const toSave = newArticles.slice(0, 5);
     const analyzed = [];
-    for (const article of toAnalyze) {
-      try {
-        const analysis = await analyzeWithGemini(article.title, article.description, article.category, GEMINI_KEY);
-        // 네이버 뉴스 링크에서 썸네일 가져오기 (원본보다 안정적)
-        const thumbnail = await fetchThumbnail(article.naverLink || article.link);
-        const { naverLink, ...rest } = article;
-        analyzed.push({ ...rest, ...analysis, thumbnail });
-      } catch (e) {
-        console.error("Gemini error:", e.message);
-        const thumbnail = await fetchThumbnail(article.naverLink || article.link);
-        const { naverLink, ...rest } = article;
-        analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
+    for (let i = 0; i < toSave.length; i++) {
+      const article = toSave[i];
+      const thumbnail = await fetchThumbnail(article.naverLink || article.link);
+      const { naverLink, ...rest } = article;
+      // 처음 2개만 Gemini 분석, 나머지는 빠르게 저장 (retry로 나중에 분석)
+      if (i < 2) {
+        try {
+          const analysis = await analyzeWithGemini(rest.title, rest.description, rest.category, GEMINI_KEY);
+          analyzed.push({ ...rest, ...analysis, thumbnail });
+          continue;
+        } catch (e) { console.error("Gemini error:", e.message); }
+      }
+      analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
       }
     }
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
@@ -70,7 +71,7 @@ export default async function handler(req, res) {
     });
     if (!insertRes.ok) console.error("Insert error:", await insertRes.text());
     // Retry unanalyzed articles
-    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=1`,
+    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=2`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     const pending = pendingRes.ok ? await pendingRes.json() : [];
     let retriedOk = 0;
