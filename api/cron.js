@@ -48,21 +48,18 @@ export default async function handler(req, res) {
     let newArticles = cleaned.filter(a => !existingLinks.has(a.link));
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
 
-    const toSave = newArticles.slice(0, 5);
+    const toAnalyze = newArticles.slice(0, 3);
     const analyzed = [];
-    for (let i = 0; i < toSave.length; i++) {
-      const article = toSave[i];
+    for (const article of toAnalyze) {
       const thumbnail = await fetchThumbnail(article.naverLink || article.link);
       const { naverLink, ...rest } = article;
-      // 처음 2개만 Gemini 분석, 나머지는 빠르게 저장 (retry로 나중에 분석)
-      if (i < 2) {
-        try {
-          const analysis = await analyzeWithGemini(rest.title, rest.description, rest.category, GEMINI_KEY);
-          analyzed.push({ ...rest, ...analysis, thumbnail });
-          continue;
-        } catch (e) { console.error("Gemini error:", e.message); }
+      try {
+        const analysis = await analyzeWithGemini(rest.title, rest.description, rest.category, GEMINI_KEY);
+        analyzed.push({ ...rest, ...analysis, thumbnail });
+      } catch (e) {
+        console.error("Gemini error:", e.message);
+        analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
       }
-      analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
       }
     }
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
