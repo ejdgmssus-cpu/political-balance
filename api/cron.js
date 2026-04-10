@@ -13,10 +13,23 @@ export default async function handler(req, res) {
         { headers: { "X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET } });
       if (r.ok) { const d = await r.json(); allItems.push(...(d.items || [])); }
     }
+    // 주요 언론사만 허용
+    const allowedSources = new Set([
+      "chosun.com","joongang.co.kr","donga.com","hani.co.kr","khan.co.kr",
+      "hankookilbo.com","kmib.co.kr","segye.com","munhwa.com",
+      "news.kbs.co.kr","imnews.imbc.com","news.sbs.co.kr","news.jtbc.co.kr",
+      "mbn.co.kr","tvchosun.com","channela.com","ytn.co.kr",
+      "hankyung.com","mk.co.kr","sedaily.com","mt.co.kr","edaily.co.kr",
+      "fnnews.com","asiae.co.kr","herald.co.kr","heraldcorp.com",
+      "yna.co.kr","newsis.com","news1.kr"
+    ]);
+    const isAllowed = (url) => { try { const h = new URL(url).hostname.replace('www.',''); return [...allowedSources].some(d => h === d || h.endsWith('.'+d)); } catch { return false; } };
+
     const seen = new Set();
     const cleaned = [];
     for (const item of allItems) {
       const link = item.originallink || item.link;
+      if (!isAllowed(link)) continue;
       if (seen.has(link)) continue;
       seen.add(link);
       const title = cleanHtml(item.title);
@@ -24,7 +37,6 @@ export default async function handler(req, res) {
       const pubDate = new Date(item.pubDate);
       const minutesAgo = (Date.now() - pubDate.getTime()) / 60000;
       const is_breaking = minutesAgo <= 10 && /속보|긴급|단독|breaking|flash/i.test(title);
-      // 네이버 뉴스 링크에서 썸네일 추출 시도
       const naverLink = item.link;
       cleaned.push({ title, description, link, naverLink, source: extractSource(link), category: detectCategory(title + " " + description), pub_date: pubDate.toISOString(), is_breaking });
     }
