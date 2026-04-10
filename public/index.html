@@ -245,7 +245,7 @@ function rSearch(){
 }
 
 function rTrending(){
-  const sorted=[...S.articles].sort((a,b)=>(b.view_count||0)-(a.view_count||0));
+  const sorted=[...S.articles].sort((a,b)=>(b.view_count||0)-(a.view_count||0)).slice(0,10);
   return h('div',{style:{padding:'52px 0 100px'}},
     h('div',{style:{padding:'0 20px 14px'}},
       h('h2',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'3px'}},'핫이슈'),
