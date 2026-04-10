@@ -331,6 +331,8 @@ function rNav(){
 
 function render(){
   const app=document.getElementById('app');app.innerHTML='';
+  // 로그인했지만 닉네임 미설정 → 강제 닉네임 설정
+  if(S.user&&!localStorage.getItem('dasi_nick')){app.appendChild(rSetupNick());app.appendChild(rNav());return;}
   if(S.sel){app.appendChild(rDetail());return;}
   if(S.tab==='home'){
     app.appendChild(rHeader());
