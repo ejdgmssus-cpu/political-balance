@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const NAVER_SECRET = process.env.NAVER_CLIENT_SECRET;
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   try {
-    const keywords = ["정치 시사", "경제 정책", "외교 안보", "사회 이슈", "부동산 정책", "에너지 원전"];
+    const keywords = ["정치 국회", "경제 정책", "외교 안보", "부동산 정책", "에너지 원전", "노동 고용"];
     let allItems = [];
     for (const kw of keywords) {
       const r = await fetch(`https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(kw)}&display=10&sort=date`,
@@ -36,6 +36,8 @@ export default async function handler(req, res) {
       const description = cleanHtml(item.description);
       const pubDate = new Date(item.pubDate);
       const minutesAgo = (Date.now() - pubDate.getTime()) / 60000;
+      // 연예·스포츠·날씨 기사 제외
+      if (/드라마|영화|아이돌|연예|시청률|흥행|개봉|출연|배우|가수|컴백|앨범|예능|스포츠|야구|축구|골프|올림픽|날씨|기온/.test(title)) continue;
       const is_breaking = minutesAgo <= 10 && /속보|긴급|단독|breaking|flash/i.test(title);
       const naverLink = item.link;
       cleaned.push({ title, description, link, naverLink, source: extractSource(link), category: detectCategory(title + " " + description), pub_date: pubDate.toISOString(), is_breaking });
