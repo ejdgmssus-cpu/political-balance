@@ -95,6 +95,7 @@ function srcLogo(name){const n=fixSrc(name);const d=SRC_MAP[n];return d?`https:/
 
 async function loadArticles(cat,search,sort){S.loading=!0;render();try{let u='/api/articles?limit=30';if(cat&&cat!=='전체')u+=`&category=${encodeURIComponent(cat)}`;if(search)u+=`&search=${encodeURIComponent(search)}`;if(sort)u+=`&sort=${sort}`;const r=await fetch(u);S.articles=r.ok?await r.json():[];}catch(e){S.articles=[];}S.loading=!1;render();}
 function addView(id){fetch('/api/articles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}).catch(()=>{});}
+function vote(id,side){const key='voted_'+id;if(localStorage.getItem(key))return;localStorage.setItem(key,side);fetch('/api/articles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action:'vote',side})}).catch(()=>{});if(S.sel){S.sel['vote_'+side]=(S.sel['vote_'+side]||0)+1;}render();}
 async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/api/comments?article_id=${id}`);S.comments=r.ok?await r.json():[];}catch(e){S.comments=[];}S.cmtLoading=!1;render();}
 function getNick(){return localStorage.getItem('dasi_nick')||S.user?.user_metadata?.full_name||S.user?.user_metadata?.name||S.user?.email?.split('@')[0]||'익명';}
 function setNick(n){localStorage.setItem('dasi_nick',n);}
@@ -169,7 +170,8 @@ function rDetail(){
         h('span',{style:{fontSize:'14px',flexShrink:0}},'✓'),
         h('div',{},
           h('div',{style:{fontSize:'12px',fontWeight:'700',color:'var(--green)',marginBottom:'4px'}},'양쪽이 동의하는 점'),
-          h('div',{style:{fontSize:'13.5px',color:'var(--text)',lineHeight:'1.65'}},a.common_ground)))):null,
+          h('div',{style:{fontSize:'13.5px',color:'var(--text)',lineHeight:'1.65'}},a.common_ground))),
+      rVote(a)):null,
     h('div',{style:{margin:'16px 20px',display:'flex',alignItems:'center',gap:'16px',padding:'12px 0',borderTop:'1px solid var(--border)',borderBottom:'1px solid var(--border)'}},
       h('div',{style:{display:'flex',alignItems:'center',gap:'5px',color:'var(--muted)'}},h('span',{innerHTML:IC.cmt}),h('span',{style:{fontSize:'12px'}},`댓글 ${S.comments.length}`))),
     h('div',{style:{padding:'0 20px'}},
@@ -194,6 +196,31 @@ function rSide(stance,reasons,concern,label,color,bg){
   return h('div',{style:{background:bg,borderRadius:'var(--radius)',padding:'14px',borderLeft:`3px solid ${c}`}},
     h('div',{style:{fontSize:'12px',fontWeight:'700',color,marginBottom:'6px'}},label),
     h('div',{style:{fontSize:'13px',fontWeight:'500',color:'var(--text)',lineHeight:'1.65'}},stance)
+  );
+}
+
+function rVote(a){
+  const vp=a.vote_progressive||0, vc=a.vote_conservative||0;
+  const total=vp+vc;
+  const pPct=total>0?Math.round(vp/total*100):50;
+  const cPct=100-pPct;
+  const voted=localStorage.getItem('voted_'+a.id);
+  return h('div',{style:{marginTop:'10px',padding:'14px 16px',borderRadius:'var(--radius)',background:'var(--card)',border:'1px solid var(--border)'}},
+    h('div',{style:{fontSize:'13px',fontWeight:'700',marginBottom:'10px',textAlign:'center'}},'이 이슈, 당신의 생각은?'),
+    voted?
+      h('div',{},
+        h('div',{style:{display:'flex',height:'32px',borderRadius:'var(--radius-sm)',overflow:'hidden',marginBottom:'6px'}},
+          h('div',{style:{width:`${pPct}%`,background:'var(--left-color)',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'11px',fontWeight:'700',transition:'width 0.5s'}},pPct>10?`${pPct}%`:''),
+          h('div',{style:{width:`${cPct}%`,background:'var(--right-color)',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'11px',fontWeight:'700',transition:'width 0.5s'}},cPct>10?`${cPct}%`:'')),
+        h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'var(--muted)'}},
+          h('span',{},`진보 시각 공감 ${vp}명`),
+          h('span',{},`보수 시각 공감 ${vc}명`)))
+    :
+      h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}},
+        h('button',{style:{padding:'12px',borderRadius:'var(--radius-sm)',border:'1.5px solid var(--left-color)',background:'var(--left-bg)',color:'var(--left-color)',fontSize:'13px',fontWeight:'700',cursor:'pointer'},
+          onClick:e=>{e.stopPropagation();vote(a.id,'progressive');}},'진보 시각에 공감'),
+        h('button',{style:{padding:'12px',borderRadius:'var(--radius-sm)',border:'1.5px solid var(--right-color)',background:'var(--right-bg)',color:'var(--right-color)',fontSize:'13px',fontWeight:'700',cursor:'pointer'},
+          onClick:e=>{e.stopPropagation();vote(a.id,'conservative');}},'보수 시각에 공감'))
   );
 }
 

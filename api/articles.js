@@ -4,29 +4,29 @@ export default async function handler(req, res) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-  // POST: 조회수 증가
+  // POST: 조회수 증가 또는 투표
   if (req.method === "POST") {
-    const { id } = req.body || {};
+    const { id, action, side } = req.body || {};
     if (!id) return res.status(400).json({ error: "id required" });
     try {
-      // RPC로 atomic increment
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_view`, {
-        method: "POST",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ article_id: id })
-      });
-      if (!r.ok) {
-        // RPC가 없으면 직접 PATCH
-        const getR = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}&select=view_count`,
-          { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
-        const arr = getR.ok ? await getR.json() : [];
-        const cur = arr[0]?.view_count || 0;
-        await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
-          method: "PATCH",
-          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-          body: JSON.stringify({ view_count: cur + 1 })
-        });
+      const getR = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}&select=view_count,vote_progressive,vote_conservative`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+      const arr = getR.ok ? await getR.json() : [];
+      const cur = arr[0] || {};
+
+      let patch = {};
+      if (action === "vote" && side) {
+        if (side === "progressive") patch = { vote_progressive: (cur.vote_progressive || 0) + 1 };
+        else if (side === "conservative") patch = { vote_conservative: (cur.vote_conservative || 0) + 1 };
+      } else {
+        patch = { view_count: (cur.view_count || 0) + 1 };
       }
+
+      await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
+        method: "PATCH",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify(patch)
+      });
       return res.status(200).json({ ok: true });
     } catch (e) { return res.status(500).json({ error: e.message }); }
   }

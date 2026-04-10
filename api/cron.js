@@ -50,18 +50,18 @@ export default async function handler(req, res) {
     let newArticles = cleaned.filter(a => !existingLinks.has(a.link));
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
 
-    const toAnalyze = newArticles.slice(0, 3);
+    const toAnalyze = newArticles.slice(0, 2);
     const analyzed = [];
     for (const article of toAnalyze) {
-      const thumbnail = await fetchThumbnail(article.naverLink || article.link);
+      const { thumbnail, fullText } = await fetchArticlePage(article.naverLink || article.link);
       const { naverLink, ...rest } = article;
+      const bodyForAI = fullText || rest.description;
       try {
-        const analysis = await analyzeWithGemini(rest.title, rest.description, rest.category, GEMINI_KEY);
-        analyzed.push({ ...rest, ...analysis, thumbnail });
+        const analysis = await analyzeWithGemini(rest.title, bodyForAI, rest.category, GEMINI_KEY);
+        analyzed.push({ ...rest, ...analysis, thumbnail, description: fullText ? fullText.slice(0, 500) : rest.description });
       } catch (e) {
         console.error("Gemini error:", e.message);
         analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
-      }
       }
     }
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
@@ -76,8 +76,9 @@ export default async function handler(req, res) {
     let retriedOk = 0;
     for (const p of pending) {
       try {
-        const analysis = await analyzeWithGemini(p.title, p.description, p.category, GEMINI_KEY);
-        const thumbnail = await fetchThumbnail(p.link);
+        const { thumbnail, fullText } = await fetchArticlePage(p.link);
+        const bodyForAI = fullText || p.description;
+        const analysis = await analyzeWithGemini(p.title, bodyForAI, p.category, GEMINI_KEY);
         const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${p.id}`, {
           method: "PATCH", headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({ ...analysis, thumbnail })
@@ -93,40 +94,50 @@ export default async function handler(req, res) {
 
 function cleanHtml(s) { return s.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&apos;/g, "'").replace(/&#x3D;/g, "=").replace(/&#x27;/g, "'").replace(/&#\w+;/g, ""); }
 
-async function fetchThumbnail(url) {
+async function fetchArticlePage(url) {
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 3000);
+    const tid = setTimeout(() => ctrl.abort(), 4000);
     const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" }, redirect: "follow", signal: ctrl.signal });
     clearTimeout(tid);
-    if (!r.ok) return "";
+    if (!r.ok) return { thumbnail: "", fullText: "" };
     const html = await r.text();
-    const m = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+    const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
       || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-    return m ? m[1] : "";
-  } catch { return ""; }
+    const thumbnail = ogImg ? ogImg[1] : "";
+    // 본문 추출: article 태그 또는 주요 콘텐츠 영역
+    let body = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1]
+      || html.match(/class=["'][^"']*article[_-]?body[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+      || html.match(/class=["'][^"']*news[_-]?content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+      || html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)?.[1]
+      || "";
+    const fullText = body.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 2000);
+    return { thumbnail, fullText };
+  } catch { return { thumbnail: "", fullText: "" }; }
 }
 
-async function analyzeWithGemini(title, description, category, apiKey) {
-  const prompt = `당신은 한국 정치·시사 뉴스 분석 AI입니다.
-아래 뉴스를 읽고, 현재 한국 정치 상황을 반영하여 진보와 보수 양쪽 시각으로 분석하세요.
+async function analyzeWithGemini(title, body, category, apiKey) {
+  const prompt = `당신은 한국 정치·시사 뉴스 분석 전문가입니다.
+아래 기사를 깊이 읽고, 진보와 보수 양쪽이 실제로 취할 입장을 분석하세요.
 
-## 분석할 뉴스
+## 기사
 제목: "${title}"
-본문: "${description}"
+본문:
+${body.slice(0, 2000)}
+
 카테고리: ${category}
 
-## 반드시 지킬 규칙
-1. 모든 문장은 "~함", "~임", "~됨" 체로 통일
-2. 글자수 제한을 반드시 지킴
-3. 진보/보수 입장은 해당 진영이 실제로 취할 입장을 근거 있게 작성
+## 규칙
+1. 본문 내용을 근거로 구체적으로 분석 (추상적 분석 금지)
+2. "~함", "~임", "~됨" 체 통일
+3. 진보/보수 입장은 실제 정치권에서 나올 법한 주장으로 작성
 
 ## 글자수 제한
-- summary: 핵심 요약 1문장, 최대 60자
-- progressive_stance/conservative_stance: 각 1문장, 최대 40자
-- progressive_reasons/conservative_reasons: 각 근거 2개, 각 20자 이내
-- progressive_concern/conservative_concern: 각 우려 1문장, 최대 30자
-- common_ground: 공통점 1문장, 최대 40자
+- summary: 핵심 요약 1~2문장, 최대 80자
+- progressive_stance/conservative_stance: 각 1문장, 최대 50자
+- progressive_reasons/conservative_reasons: 각 근거 2개, 각 25자 이내
+- progressive_concern/conservative_concern: 각 우려 1문장, 최대 35자
+- common_ground: 공통점 1문장, 최대 50자
 
 JSON만 응답:
 {"summary":"","progressive_stance":"","progressive_reasons":["",""],"progressive_concern":"","conservative_stance":"","conservative_reasons":["",""],"conservative_concern":"","common_ground":""}`;
