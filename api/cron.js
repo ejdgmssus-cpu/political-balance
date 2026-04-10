@@ -66,7 +66,7 @@ export default async function handler(req, res) {
     });
     if (!insertRes.ok) console.error("Insert error:", await insertRes.text());
     // Retry unanalyzed articles
-    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI 분석 준비 중&select=id,title,description,category,link&limit=2`,
+    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?summary=eq.AI%20%EB%B6%84%EC%84%9D%20%EC%A4%80%EB%B9%84%20%EC%A4%91&select=id,title,description,category,link&limit=2`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     const pending = pendingRes.ok ? await pendingRes.json() : [];
     for (const p of pending) {
