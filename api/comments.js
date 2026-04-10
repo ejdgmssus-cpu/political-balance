@@ -11,9 +11,16 @@ export default async function handler(req, res) {
   // GET: 댓글 가져오기
   if (req.method === "GET") {
     const articleId = req.query.article_id;
-    if (!articleId) return res.status(400).json({ error: "article_id required" });
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?article_id=eq.${articleId}&order=created_at.desc&limit=50`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+    const username = req.query.username;
+    let url;
+    if (username) {
+      url = `${SUPABASE_URL}/rest/v1/comments?username=eq.${encodeURIComponent(username)}&order=created_at.desc&limit=30`;
+    } else if (articleId) {
+      url = `${SUPABASE_URL}/rest/v1/comments?article_id=eq.${articleId}&order=created_at.desc&limit=50`;
+    } else {
+      return res.status(400).json({ error: "article_id or username required" });
+    }
+    const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     return res.status(200).json(r.ok ? await r.json() : []);
   }
 

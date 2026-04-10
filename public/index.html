@@ -50,7 +50,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
 
 const S={tab:'home',articles:[],loading:!1,sel:null,comments:[],cmtLoading:!1,sq:'',sf:!1,
   sources:['전체','정치','경제','사회','외교','부동산','에너지','노동'],
-  ac:'전체',stats:{read:0,comments:0,stanceOpens:0},stanceOpen:!1,user:null};
+  ac:'전체',stats:{read:0,comments:0,stanceOpens:0},stanceOpen:!1,user:null,myComments:[],myCmtLoading:!1};
 
 // Auth
 async function initAuth(){
@@ -96,7 +96,10 @@ function srcLogo(name){const n=fixSrc(name);const d=SRC_MAP[n];return d?`https:/
 async function loadArticles(cat,search,sort){S.loading=!0;render();try{let u='/api/articles?limit=30';if(cat&&cat!=='전체')u+=`&category=${encodeURIComponent(cat)}`;if(search)u+=`&search=${encodeURIComponent(search)}`;if(sort)u+=`&sort=${sort}`;const r=await fetch(u);S.articles=r.ok?await r.json():[];}catch(e){S.articles=[];}S.loading=!1;render();}
 function addView(id){fetch('/api/articles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}).catch(()=>{});}
 async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/api/comments?article_id=${id}`);S.comments=r.ok?await r.json():[];}catch(e){S.comments=[];}S.cmtLoading=!1;render();}
-async function postCmt(id,t){if(!S.user)return;const name=S.user.user_metadata?.full_name||S.user.user_metadata?.name||S.user.email?.split('@')[0]||'익명';try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t,username:name})});S.stats.comments++;loadCmt(id);}catch(e){}}
+function getNick(){return localStorage.getItem('dasi_nick')||S.user?.user_metadata?.full_name||S.user?.user_metadata?.name||S.user?.email?.split('@')[0]||'익명';}
+function setNick(n){localStorage.setItem('dasi_nick',n);}
+async function postCmt(id,t){if(!S.user)return;try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t,username:getNick()})});S.stats.comments++;loadCmt(id);}catch(e){}}
+async function loadMyCmt(){S.myCmtLoading=!0;render();try{const r=await fetch(`/api/comments?username=${encodeURIComponent(getNick())}`);S.myComments=r.ok?await r.json():[];}catch(e){S.myComments=[];}S.myCmtLoading=!1;render();}
 
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
@@ -233,28 +236,37 @@ function rTrending(){
 
 function rProfile(){
   if(!S.user) return rLoginPage();
-  const name=S.user.user_metadata?.full_name||S.user.user_metadata?.name||S.user.email?.split('@')[0]||'사용자';
+  const nick=getNick();
   const avatar=S.user.user_metadata?.avatar_url||S.user.user_metadata?.picture||null;
-  const balanceRate=S.stats.read>0?Math.round((S.stats.stanceOpens/S.stats.read)*100):0;
-  const balanceLabel=balanceRate>=70?'훌륭해요! 다양한 시각을 보고 있어요':balanceRate>=40?'좋아요! 다른 시각도 살펴보고 있어요':'다른 시각도 한번 눌러보세요';
   return h('div',{style:{padding:'52px 20px 100px'}},
-    h('div',{style:{textAlign:'center',marginBottom:'28px'}},
+    // 프로필 헤더
+    h('div',{style:{textAlign:'center',marginBottom:'24px'}},
       avatar?h('img',{src:avatar,style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',display:'block',objectFit:'cover'}}):
-      h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'24px',fontWeight:'800'}},name[0]),
-      h('h2',{style:{fontSize:'18px',fontWeight:'800'}},name),
+      h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'24px',fontWeight:'800'}},nick[0]),
+      h('h2',{style:{fontSize:'18px',fontWeight:'800'}},nick),
       h('p',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'3px'}},S.user.email||'')),
-    h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'24px'}},
-      ...[{l:'읽은 기사',v:S.stats.read},{l:'남긴 댓글',v:S.stats.comments},{l:'다른 시각',v:S.stats.stanceOpens}].map(s=>
+    // 닉네임 설정
+    h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'14px',border:'1px solid var(--border)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}},
+      h('input',{id:'nickInput',placeholder:'닉네임 설정',value:nick,style:{flex:1,padding:'8px 12px',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}),
+      h('button',{style:{padding:'8px 16px',borderRadius:'var(--radius-sm)',border:'none',background:'var(--blue)',color:'#FFF',fontSize:'12px',fontWeight:'700',cursor:'pointer'},
+        onClick:()=>{const v=document.getElementById('nickInput')?.value?.trim();if(v){setNick(v);render();}}},'저장')),
+    // 통계
+    h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'20px'}},
+      ...[{l:'읽은 기사',v:S.stats.read},{l:'남긴 댓글',v:S.stats.comments}].map(s=>
         h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'16px',textAlign:'center',border:'1px solid var(--border)'}},
           h('div',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'2px'}},s.v),
           h('div',{style:{fontSize:'10px',color:'var(--muted)',fontWeight:'500'}},s.l)))),
-    h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'16px',border:'1px solid var(--border)',marginBottom:'20px'}},
-      h('div',{style:{fontSize:'13px',fontWeight:'700',marginBottom:'12px'}},'균형도'),
-      h('div',{style:{height:'8px',borderRadius:'4px',background:'var(--input)',overflow:'hidden'}},
-        h('div',{style:{height:'100%',width:`${Math.min(balanceRate,100)}%`,borderRadius:'4px',background:'linear-gradient(90deg,var(--blue),var(--green))',transition:'width 0.5s'}})),
-      h('div',{style:{display:'flex',justifyContent:'space-between',marginTop:'8px'}},
-        h('span',{style:{fontSize:'13px',fontWeight:'700',color:'var(--text)'}},`${balanceRate}%`),
-        h('span',{style:{fontSize:'11px',color:'var(--muted)'}},balanceLabel))),
+    // 내 댓글
+    h('div',{style:{marginBottom:'20px'}},
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}},
+        h('span',{style:{fontSize:'14px',fontWeight:'700'}},'내가 쓴 댓글'),
+        h('button',{style:{fontSize:'12px',color:'var(--blue)',border:'none',background:'transparent',cursor:'pointer',fontWeight:'600'},onClick:loadMyCmt},'새로고침')),
+      S.myCmtLoading?h('div',{style:{textAlign:'center',padding:'20px',color:'var(--muted)',fontSize:'13px'}},'불러오는 중...'):null,
+      ...S.myComments.map(c=>h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'12px 14px',border:'1px solid var(--border)',marginBottom:'6px'}},
+        h('div',{style:{fontSize:'13px',lineHeight:'1.6',color:'var(--text)'}},c.text),
+        h('div',{style:{fontSize:'11px',color:'var(--muted)',marginTop:'6px'}},tAgo(c.created_at)))),
+      S.myComments.length===0&&!S.myCmtLoading?h('div',{style:{textAlign:'center',padding:'24px',color:'var(--muted)',fontSize:'13px',background:'var(--card)',borderRadius:'var(--radius)',border:'1px solid var(--border)'}},'아직 댓글이 없어요'):null),
+    // 로그아웃
     h('button',{style:{width:'100%',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--card)',fontSize:'14px',fontWeight:'500',color:'var(--red)',cursor:'pointer'},
       onClick:logout},'로그아웃')
   );
