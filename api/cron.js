@@ -6,18 +6,13 @@ export default async function handler(req, res) {
   const NAVER_SECRET = process.env.NAVER_CLIENT_SECRET;
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   try {
-    // 핵심 키워드 (인기 있는 정치·시사 뉴스 위주)
-    const keywords = ["대선 후보", "국회 여야", "경제 민생", "외교 한미", "부동산 대책", "사회 이슈"];
+    const keywords = ["정치 시사", "경제 정책", "외교 안보", "사회 이슈", "부동산 정책", "에너지 원전"];
     let allItems = [];
     for (const kw of keywords) {
-      const r = await fetch(`https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(kw)}&display=5&sort=sim`,
+      const r = await fetch(`https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(kw)}&display=10&sort=date`,
         { headers: { "X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET } });
       if (r.ok) { const d = await r.json(); allItems.push(...(d.items || [])); }
     }
-    // 주요 언론사 우선 정렬
-    const majorSources = new Set(["chosun.com","donga.com","joongang.co.kr","hani.co.kr","khan.co.kr","hankyung.com","mk.co.kr","yna.co.kr","ytn.co.kr","news.sbs.co.kr","news.jtbc.co.kr","news.kbs.co.kr","imnews.imbc.com","mt.co.kr","sedaily.com","hankookilbo.com","kmib.co.kr","segye.com","newsis.com","news1.kr","edaily.co.kr","fnnews.com","asiae.co.kr","herald.co.kr","heraldcorp.com","ohmynews.com","nocutnews.co.kr","tf.co.kr","munhwa.com"]);
-    const isMajor = (url) => { try { const h = new URL(url).hostname.replace('www.',''); return [...majorSources].some(d => h === d || h.endsWith('.'+d)); } catch { return false; } };
-
     const seen = new Set();
     const cleaned = [];
     for (const item of allItems) {
@@ -31,10 +26,8 @@ export default async function handler(req, res) {
       const is_breaking = minutesAgo <= 10 && /속보|긴급|단독|breaking|flash/i.test(title);
       // 네이버 뉴스 링크에서 썸네일 추출 시도
       const naverLink = item.link;
-      cleaned.push({ title, description, link, naverLink, source: extractSource(link), category: detectCategory(title + " " + description), pub_date: pubDate.toISOString(), is_breaking, _major: isMajor(link) });
+      cleaned.push({ title, description, link, naverLink, source: extractSource(link), category: detectCategory(title + " " + description), pub_date: pubDate.toISOString(), is_breaking });
     }
-    // 주요 언론사 우선, 그 다음 나머지
-    cleaned.sort((a, b) => (b._major ? 1 : 0) - (a._major ? 1 : 0));
 
     const existingRes = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=link&order=created_at.desc&limit=200`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
@@ -50,12 +43,12 @@ export default async function handler(req, res) {
         const analysis = await analyzeWithGemini(article.title, article.description, article.category, GEMINI_KEY);
         // 네이버 뉴스 링크에서 썸네일 가져오기 (원본보다 안정적)
         const thumbnail = await fetchThumbnail(article.naverLink || article.link);
-        const { naverLink, _major, ...rest } = article;
+        const { naverLink, ...rest } = article;
         analyzed.push({ ...rest, ...analysis, thumbnail });
       } catch (e) {
         console.error("Gemini error:", e.message);
         const thumbnail = await fetchThumbnail(article.naverLink || article.link);
-        const { naverLink, _major, ...rest } = article;
+        const { naverLink, ...rest } = article;
         analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
       }
     }
