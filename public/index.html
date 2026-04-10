@@ -167,12 +167,9 @@ function rDetail(){
 
 function rSide(stance,reasons,concern,label,color,bg){
   const c=color==='var(--left-color)'?'#1A6DFF':'#E8363A';
-  return h('div',{style:{background:bg,borderRadius:'var(--radius)',padding:'14px',borderTop:`2.5px solid ${c}`}},
-    h('div',{style:{fontSize:'12px',fontWeight:'700',color,textAlign:'center',marginBottom:'8px'}},`${label} 입장`),
-    h('div',{style:{fontSize:'12.5px',fontWeight:'500',color:'var(--text)',lineHeight:'1.6',marginBottom:'8px'}},stance),
-    ...reasons.map(r=>h('div',{style:{fontSize:'11.5px',color:'var(--text3)',marginBottom:'4px',paddingLeft:'10px',position:'relative',lineHeight:'1.5'}},
-      h('span',{style:{position:'absolute',left:'0',top:'0',color:'var(--muted)',fontSize:'11.5px'}},'–'),r)),
-    h('div',{style:{marginTop:'8px',fontSize:'11px',color:'var(--muted)',lineHeight:'1.5',fontStyle:'italic'}},concern)
+  return h('div',{style:{background:bg,borderRadius:'var(--radius)',padding:'14px',borderLeft:`3px solid ${c}`}},
+    h('div',{style:{fontSize:'12px',fontWeight:'700',color,marginBottom:'6px'}},label),
+    h('div',{style:{fontSize:'13px',fontWeight:'500',color:'var(--text)',lineHeight:'1.65'}},stance)
   );
 }
 

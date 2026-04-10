@@ -91,7 +91,7 @@ export default async function handler(req, res) {
   }
 }
 
-function cleanHtml(s) { return s.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&apos;/g, "'"); }
+function cleanHtml(s) { return s.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&apos;/g, "'").replace(/&#x3D;/g, "=").replace(/&#x27;/g, "'").replace(/&#\w+;/g, ""); }
 
 async function fetchThumbnail(url) {
   try {
