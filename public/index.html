@@ -42,10 +42,33 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 </head>
 <body>
 <div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+const SUPABASE_URL='https://rwcmthtyisuqkisxufst.supabase.co';
+const SUPABASE_ANON='sb_publishable_WFWzeNbNgzx5Q7QgcnSNYg_6KMsd7NX';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+
 const S={tab:'home',articles:[],loading:!1,sel:null,comments:[],cmtLoading:!1,sq:'',sf:!1,
   sources:['전체','정치','경제','사회','외교','부동산','에너지','노동'],
-  ac:'전체',stats:{read:0,comments:0},stanceOpen:!1};
+  ac:'전체',stats:{read:0,comments:0,stanceOpens:0},stanceOpen:!1,user:null};
+
+// Auth
+async function initAuth(){
+  const{data:{session}}=await sb.auth.getSession();
+  S.user=session?.user||null;
+  sb.auth.onAuthStateChange((e,session)=>{S.user=session?.user||null;render();});
+  render();
+}
+async function loginKakao(){
+  await sb.auth.signInWithOAuth({provider:'kakao',options:{redirectTo:window.location.origin}});
+}
+async function loginGoogle(){
+  await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
+}
+async function logout(){
+  await sb.auth.signOut();
+  S.user=null;render();
+}
 
 const CAT_COLORS={정치:['#5A50DC','rgba(90,80,220,0.08)'],경제:['#22A861','rgba(34,168,97,0.08)'],외교:['#E88C1A','rgba(232,140,26,0.08)'],부동산:['#1A6DFF','rgba(26,109,255,0.08)'],사회:['#9B59B6','rgba(155,89,182,0.08)'],에너지:['#E8363A','rgba(232,54,58,0.08)'],노동:['#E88C1A','rgba(232,140,26,0.08)'],기타:['#999','rgba(153,153,153,0.08)']};
 
@@ -73,7 +96,7 @@ function srcLogo(name){const n=fixSrc(name);const d=SRC_MAP[n];return d?`https:/
 async function loadArticles(cat,search,sort){S.loading=!0;render();try{let u='/api/articles?limit=30';if(cat&&cat!=='전체')u+=`&category=${encodeURIComponent(cat)}`;if(search)u+=`&search=${encodeURIComponent(search)}`;if(sort)u+=`&sort=${sort}`;const r=await fetch(u);S.articles=r.ok?await r.json():[];}catch(e){S.articles=[];}S.loading=!1;render();}
 function addView(id){fetch('/api/articles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}).catch(()=>{});}
 async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/api/comments?article_id=${id}`);S.comments=r.ok?await r.json():[];}catch(e){S.comments=[];}S.cmtLoading=!1;render();}
-async function postCmt(id,t){try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t})});S.stats.comments++;loadCmt(id);}catch(e){}}
+async function postCmt(id,t){if(!S.user)return;const name=S.user.user_metadata?.full_name||S.user.user_metadata?.name||S.user.email?.split('@')[0]||'익명';try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t,username:name})});S.stats.comments++;loadCmt(id);}catch(e){}}
 
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
@@ -133,7 +156,7 @@ function rDetail(){
       h('a',{href:a.link,target:'_blank',style:{display:'inline-flex',alignItems:'center',gap:'4px',marginTop:'14px',fontSize:'13px',color:'var(--blue)',textDecoration:'none',fontWeight:'600'}},
         h('span',{},'원문 기사 보기'),h('span',{innerHTML:IC.link}))),
     has&&!S.stanceOpen?h('button',{style:{margin:'16px 20px',padding:'14px',width:'calc(100% - 40px)',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--card)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',fontSize:'14px',fontWeight:'600',color:'var(--text)'},
-      onClick:e=>{e.stopPropagation();S.stanceOpen=!0;render();}},
+      onClick:e=>{e.stopPropagation();S.stanceOpen=!0;S.stats.stanceOpens++;render();}},
       h('span',{style:{fontSize:'16px'}},'👀'),h('span',{},'다른 시각도 있어요')):null,
     has&&S.stanceOpen?h('div',{style:{margin:'12px 20px 0',animation:'fadeUp 0.3s ease'}},
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}},
@@ -156,9 +179,10 @@ function rDetail(){
         h('div',{style:{fontSize:'13px',lineHeight:'1.6',color:'var(--text2)'}},c.text))),
       S.comments.length===0&&!S.cmtLoading?h('div',{style:{textAlign:'center',padding:'30px',color:'var(--muted)'}},h('div',{style:{fontSize:'13px'}},'첫 댓글을 남겨보세요')):null),
     h('div',{style:{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'430px',background:'var(--nav)',borderTop:'1px solid var(--sep)',padding:'10px 16px 30px',display:'flex',gap:'8px',alignItems:'center',zIndex:20}},
-      h('input',{id:'cmt',placeholder:'댓글을 입력해 보세요.',style:{flex:1,padding:'10px 14px',borderRadius:'20px',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}),
-      h('button',{innerHTML:IC.send,style:{width:'38px',height:'38px',borderRadius:'50%',border:'none',background:'var(--blue)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'#FFF'},
-        onClick:()=>{const i=document.getElementById('cmt');if(i.value.trim()){postCmt(a.id,i.value.trim());i.value='';}}}))
+      S.user?h('input',{id:'cmt',placeholder:'댓글을 입력해 보세요.',style:{flex:1,padding:'10px 14px',borderRadius:'20px',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}):
+      h('button',{style:{flex:1,padding:'10px 14px',borderRadius:'20px',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--muted)',textAlign:'left',cursor:'pointer'},onClick:()=>{S.tab='profile';S.sel=null;render();}},'로그인하고 댓글을 남겨보세요'),
+      S.user?h('button',{innerHTML:IC.send,style:{width:'38px',height:'38px',borderRadius:'50%',border:'none',background:'var(--blue)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'#FFF'},
+        onClick:()=>{const i=document.getElementById('cmt');if(i&&i.value.trim()){postCmt(a.id,i.value.trim());i.value='';}}}):null)
   );
 }
 
@@ -208,28 +232,45 @@ function rTrending(){
 }
 
 function rProfile(){
+  if(!S.user) return rLoginPage();
+  const name=S.user.user_metadata?.full_name||S.user.user_metadata?.name||S.user.email?.split('@')[0]||'사용자';
+  const avatar=S.user.user_metadata?.avatar_url||S.user.user_metadata?.picture||null;
+  const balanceRate=S.stats.read>0?Math.round((S.stats.stanceOpens/S.stats.read)*100):0;
+  const balanceLabel=balanceRate>=70?'훌륭해요! 다양한 시각을 보고 있어요':balanceRate>=40?'좋아요! 다른 시각도 살펴보고 있어요':'다른 시각도 한번 눌러보세요';
   return h('div',{style:{padding:'52px 20px 100px'}},
     h('div',{style:{textAlign:'center',marginBottom:'28px'}},
-      h('img',{src:'/logo.png',style:{width:'64px',height:'64px',borderRadius:'16px',margin:'0 auto 12px',display:'block'}}),
-      h('h2',{style:{fontSize:'18px',fontWeight:'800'}},'균형잡힌 시민'),
-      h('p',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'3px'}},'양쪽을 이해하려는 노력')),
+      avatar?h('img',{src:avatar,style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',display:'block',objectFit:'cover'}}):
+      h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'24px',fontWeight:'800'}},name[0]),
+      h('h2',{style:{fontSize:'18px',fontWeight:'800'}},name),
+      h('p',{style:{fontSize:'12px',color:'var(--muted)',marginTop:'3px'}},S.user.email||'')),
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'24px'}},
-      ...[{l:'읽은 기사',v:S.stats.read},{l:'남긴 댓글',v:S.stats.comments},{l:'균형 점수',v:'82%'}].map(s=>
+      ...[{l:'읽은 기사',v:S.stats.read},{l:'남긴 댓글',v:S.stats.comments},{l:'다른 시각',v:S.stats.stanceOpens}].map(s=>
         h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'16px',textAlign:'center',border:'1px solid var(--border)'}},
           h('div',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'2px'}},s.v),
           h('div',{style:{fontSize:'10px',color:'var(--muted)',fontWeight:'500'}},s.l)))),
     h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'16px',border:'1px solid var(--border)',marginBottom:'20px'}},
-      h('div',{style:{fontSize:'13px',fontWeight:'700',marginBottom:'12px'}},'나의 균형도'),
-      h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
-        h('span',{style:{fontSize:'11px',fontWeight:'700',color:'var(--left-color)',width:'28px'}},'진보'),
-        h('div',{style:{flex:1,height:'4px',borderRadius:'2px',background:'var(--input)',overflow:'hidden',position:'relative'}},
-          h('div',{style:{position:'absolute',left:0,top:0,height:'100%',width:'50%',borderRadius:'2px',background:'var(--left-color)'}}),
-          h('div',{style:{position:'absolute',right:0,top:0,height:'100%',width:'42%',borderRadius:'2px',background:'var(--right-color)'}})),
-        h('span',{style:{fontSize:'11px',fontWeight:'700',color:'var(--right-color)',width:'28px',textAlign:'right'}},'보수')),
-      h('div',{style:{textAlign:'center',fontSize:'11px',color:'var(--muted)',marginTop:'10px'}},'균형 잡힌 소비를 하고 있어요')),
-    ...['알림 설정','관심 카테고리','다크모드','이용약관','앱 정보 v3.0'].map(item=>
-      h('div',{style:{padding:'14px 16px',background:'var(--card)',borderRadius:'var(--radius)',marginBottom:'6px',border:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'14px',fontWeight:'500',cursor:'pointer'}},
-        h('span',{},item),h('span',{style:{color:'var(--muted2)',fontSize:'14px'}},'›')))
+      h('div',{style:{fontSize:'13px',fontWeight:'700',marginBottom:'12px'}},'균형도'),
+      h('div',{style:{height:'8px',borderRadius:'4px',background:'var(--input)',overflow:'hidden'}},
+        h('div',{style:{height:'100%',width:`${Math.min(balanceRate,100)}%`,borderRadius:'4px',background:'linear-gradient(90deg,var(--blue),var(--green))',transition:'width 0.5s'}})),
+      h('div',{style:{display:'flex',justifyContent:'space-between',marginTop:'8px'}},
+        h('span',{style:{fontSize:'13px',fontWeight:'700',color:'var(--text)'}},`${balanceRate}%`),
+        h('span',{style:{fontSize:'11px',color:'var(--muted)'}},balanceLabel))),
+    h('button',{style:{width:'100%',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--card)',fontSize:'14px',fontWeight:'500',color:'var(--red)',cursor:'pointer'},
+      onClick:logout},'로그아웃')
+  );
+}
+
+function rLoginPage(){
+  return h('div',{style:{padding:'52px 20px 100px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh'}},
+    h('img',{src:'/logo.png',style:{width:'80px',height:'80px',borderRadius:'20px',marginBottom:'20px'}}),
+    h('h2',{style:{fontSize:'22px',fontWeight:'800',marginBottom:'6px'}},'다시 DASI'),
+    h('p',{style:{fontSize:'13px',color:'var(--muted)',marginBottom:'40px'}},'다시, 다른 시각으로'),
+    h('button',{style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'none',background:'#FEE500',fontSize:'14px',fontWeight:'700',color:'#191919',cursor:'pointer',marginBottom:'12px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'},
+      onClick:loginKakao},
+      h('span',{style:{fontSize:'18px'}},'💬'),h('span',{},'카카오로 시작하기')),
+    h('button',{style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--card)',fontSize:'14px',fontWeight:'600',color:'var(--text)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'},
+      onClick:loginGoogle},
+      h('span',{style:{fontSize:'16px'}},'G'),h('span',{},'Google로 시작하기'))
   );
 }
 
@@ -259,6 +300,7 @@ function render(){
   if(!S.sel)app.appendChild(rNav());
 }
 loadArticles('전체');
+initAuth();
 </script>
 </body>
 </html>
