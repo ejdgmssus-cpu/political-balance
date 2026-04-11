@@ -6,8 +6,25 @@ export default async function handler(req, res) {
   const NAVER_SECRET = process.env.NAVER_CLIENT_SECRET;
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   try {
-    const keywords = ["정치 국회", "경제 정책", "외교 안보", "부동산 정책", "에너지 원전", "노동 고용"];
+    // 1) 네이버 뉴스 랭킹 (인기 뉴스) 크롤링
     let allItems = [];
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 4000);
+      const rankRes = await fetch('https://news.naver.com/main/ranking/popularDay.naver', {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" }, signal: ctrl.signal });
+      clearTimeout(tid);
+      if (rankRes.ok) {
+        const html = await rankRes.text();
+        const links = [...html.matchAll(/href=["'](https?:\/\/n\.news\.naver\.com\/[^"']+)["']/g)].map(m => m[1]).slice(0, 15);
+        for (const link of links) {
+          allItems.push({ link, originallink: link, title: '', description: '', pubDate: new Date().toISOString() });
+        }
+      }
+    } catch(e) {}
+
+    // 2) 키워드 검색 (기존)
+    const keywords = ["정치 국회", "경제 정책", "외교 안보", "부동산 정책", "에너지 원전", "노동 고용"];
     for (const kw of keywords) {
       const r = await fetch(`https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(kw)}&display=10&sort=date`,
         { headers: { "X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET } });
@@ -142,7 +159,7 @@ ${body.slice(0, 2000)}
 JSON만 응답:
 {"summary":"","progressive_stance":"","progressive_reasons":["",""],"progressive_concern":"","conservative_stance":"","conservative_reasons":["",""],"conservative_concern":"","common_ground":""}`;
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
   });
