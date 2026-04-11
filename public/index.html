@@ -298,7 +298,7 @@ function rProfile(){
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'20px'}},
       ...[{l:'읽은 기사',v:S.stats.read},{l:'남긴 댓글',v:S.stats.comments}].map(s=>
         h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'16px',textAlign:'center',border:'1px solid var(--border)'}},
-          h('div',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'2px'}},s.v),
+          h('div',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'2px'}},String(s.v)),
           h('div',{style:{fontSize:'10px',color:'var(--muted)',fontWeight:'500'}},s.l)))),
     // 내 댓글
     h('div',{style:{marginBottom:'20px'}},
