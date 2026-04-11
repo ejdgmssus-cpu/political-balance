@@ -99,7 +99,7 @@ const IC={
 };
 
 function tAgo(d){const s=Math.floor((new Date()-new Date(d))/1000);if(s<60)return'방금 전';if(s<3600)return`${Math.floor(s/60)}분 전`;if(s<86400)return`${Math.floor(s/3600)}시간 전`;return`${Math.floor(s/86400)}일 전`}
-function h(t,a={},...c){const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else if(k.startsWith('on')){if(typeof v==='function')e.addEventListener(k.slice(2).toLowerCase(),v);else e.setAttribute(k,v);}else if(k==='innerHTML')e.innerHTML=v;else if(k==='className')e.className=v;else e.setAttribute(k,v)}for(const ch of c.flat()){if(ch==null)continue;e.appendChild(typeof ch==='string'?document.createTextNode(ch):ch)}return e}
+function h(t,a={},...c){const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else if(k.startsWith('on')){if(typeof v==='function')e.addEventListener(k.slice(2).toLowerCase(),v);else e.setAttribute(k,v);}else if(k==='innerHTML')e.innerHTML=v;else if(k==='className')e.className=v;else e.setAttribute(k,v)}for(const ch of c.flat()){if(ch==null||ch===false||ch===true)continue;if(typeof ch==='string'||typeof ch==='number')e.appendChild(document.createTextNode(String(ch)));else if(ch instanceof Node)e.appendChild(ch);}return e}
 function fv(n){if(!n)return'0';if(n>=10000)return(n/10000).toFixed(1)+'만';if(n>=1000)return(n/1000).toFixed(1)+'K';return String(n)}
 const SRC_MAP={'조선일보':'chosun.com','중앙일보':'joongang.co.kr','동아일보':'donga.com','한겨레':'hani.co.kr','경향신문':'khan.co.kr','한국일보':'hankookilbo.com','국민일보':'kmib.co.kr','세계일보':'segye.com','문화일보':'munhwa.com','KBS':'kbs.co.kr','MBC':'imbc.com','SBS':'sbs.co.kr','JTBC':'jtbc.co.kr','MBN':'mbn.co.kr','TV조선':'tvchosun.com','채널A':'channela.com','YTN':'ytn.co.kr','한국경제':'hankyung.com','매일경제':'mk.co.kr','서울경제':'sedaily.com','머니투데이':'mt.co.kr','이데일리':'edaily.co.kr','파이낸셜뉴스':'fnnews.com','아시아경제':'asiae.co.kr','헤럴드경제':'herald.co.kr','연합뉴스':'yna.co.kr','뉴시스':'newsis.com','뉴스1':'news1.kr'};
 const SRC_NAME={newsfreezone:'뉴스프리존',idaegu:'아이대구',dkilbo:'대구일보',inews24:'아이뉴스24',newspim:'뉴스핌',nocutnews:'노컷뉴스',dailyan:'데일리안',edaily:'이데일리',newsis:'뉴시스',news1:'뉴스1',ajunews:'아주경제',newdaily:'뉴데일리',kukinews:'쿠키뉴스'};
@@ -365,7 +365,7 @@ function render(){
   }
   if(S.tab==='search')app.appendChild(rSearch());
   if(S.tab==='trending')app.appendChild(rTrending());
-  if(S.tab==='profile'){if(S.user&&localStorage.getItem('dasi_nick')&&S.myComments.length===0&&!S.myCmtLoading)loadMyCmt();app.appendChild(rProfile());}
+  if(S.tab==='profile'){if(S.user&&localStorage.getItem('dasi_nick')&&S.myComments.length===0&&!S.myCmtLoading){S.myCmtLoading=!0;fetch(`/api/comments?username=${encodeURIComponent(getNick())}`).then(r=>r.ok?r.json():[]).then(d=>{S.myComments=d;S.myCmtLoading=!1;render();}).catch(()=>{S.myCmtLoading=!1;render();});}app.appendChild(rProfile());}
   if(!S.sel)app.appendChild(rNav());
 }
 loadArticles('전체');
