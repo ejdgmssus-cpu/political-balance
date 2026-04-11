@@ -57,7 +57,7 @@ const AVATARS=[
 ];
 function getAvatar(){const i=localStorage.getItem('dasi_avatar');return i?AVATARS[parseInt(i)]||AVATARS[0]:null;}
 function setAvatar(i){localStorage.setItem('dasi_avatar',String(i));}
-function avatarEl(av,size){return av?`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${av.bg};display:flex;align-items:center;justify-content:center;font-size:${size*0.5}px;flex-shrink:0">${av.emoji}</div>`:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--muted2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#FFF;font-size:${size*0.4}px">?</span></div>`;}
+function avatarDom(av,size){return h('div',{style:{width:size+'px',height:size+'px',borderRadius:'50%',background:av?av.bg:'var(--muted2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:(size*0.5)+'px',flexShrink:0}},av?av.emoji:'?');}
 
 const S={tab:'home',articles:[],loading:!1,sel:null,comments:[],cmtLoading:!1,sq:'',sf:!1,
   sources:['전체','정치','경제','사회','외교','부동산','에너지','노동'],
@@ -195,7 +195,7 @@ function rDetail(){
       h('div',{style:{fontSize:'14px',fontWeight:'700',marginBottom:'14px'}},`댓글 ${S.comments.length}개`),
       S.cmtLoading?h('div',{style:{textAlign:'center',padding:'20px',color:'var(--muted)',fontSize:'13px'}},'불러오는 중...'):null,
       ...S.comments.map((c,i)=>h('div',{style:{display:'flex',gap:'10px',padding:'12px 0',borderBottom:'1px solid var(--border)',animation:`fadeUp 0.2s ease ${i*0.03}s both`}},
-        h('div',{innerHTML:avatarEl(c.avatar_index!=null?AVATARS[c.avatar_index]:null,32)}),
+        avatarDom(c.avatar_index!=null?AVATARS[c.avatar_index]:null,32),
         h('div',{style:{flex:1,minWidth:0}},
           h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:'4px'}},
             h('span',{style:{fontSize:'13px',fontWeight:'700'}},c.username),
@@ -287,7 +287,7 @@ function rProfile(){
   return h('div',{style:{padding:'52px 20px 100px'}},
     // 프로필 헤더
     h('div',{style:{textAlign:'center',marginBottom:'24px'}},
-      h('div',{innerHTML:avatarEl(getAvatar()||AVATARS[0],64),style:{display:'flex',justifyContent:'center',marginBottom:'12px'}}),
+      h('div',{style:{display:'flex',justifyContent:'center',marginBottom:'12px'}},avatarDom(getAvatar()||AVATARS[0],64)),
       h('h2',{style:{fontSize:'18px',fontWeight:'800'}},nick)),
     // 닉네임 변경
     h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'14px',border:'1px solid var(--border)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}},
@@ -319,12 +319,12 @@ function rProfile(){
 function rSetupNick(){
   const selAv=S._setupAvatar||0;
   return h('div',{style:{padding:'52px 20px 100px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh'}},
-    h('div',{innerHTML:avatarEl(AVATARS[selAv],72),style:{marginBottom:'16px'}}),
+    h('div',{style:{marginBottom:'16px',display:'flex',justifyContent:'center'}},avatarDom(AVATARS[selAv],72)),
     h('h2',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'6px'}},'프로필을 설정해주세요'),
     h('p',{style:{fontSize:'13px',color:'var(--muted)',marginBottom:'20px'}},'아바타와 닉네임을 선택하세요'),
     h('div',{style:{display:'flex',flexWrap:'wrap',gap:'10px',justifyContent:'center',maxWidth:'320px',marginBottom:'24px'}},
-      ...AVATARS.map((av,i)=>h('div',{innerHTML:avatarEl(av,40),style:{cursor:'pointer',borderRadius:'50%',outline:selAv===i?'2.5px solid var(--blue)':'2.5px solid transparent',outlineOffset:'2px'},
-        onClick:()=>{S._setupAvatar=i;render();}}))),
+      ...AVATARS.map((av,i)=>h('div',{style:{cursor:'pointer',borderRadius:'50%',outline:selAv===i?'2.5px solid var(--blue)':'2.5px solid transparent',outlineOffset:'2px'},
+        onClick:()=>{S._setupAvatar=i;render();}},avatarDom(av,40)))),
     h('input',{id:'setupNick',placeholder:'닉네임 입력',style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'15px',color:'var(--text)',outline:'none',textAlign:'center',marginBottom:'16px'}}),
     h('button',{style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'none',background:'var(--blue)',color:'#FFF',fontSize:'15px',fontWeight:'700',cursor:'pointer'},
       onClick:()=>{const v=document.getElementById('setupNick')?.value?.trim();if(v){setNick(v);setAvatar(S._setupAvatar||0);render();}}},'시작하기'));

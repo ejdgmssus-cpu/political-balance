@@ -26,11 +26,13 @@ export default async function handler(req, res) {
 
   // POST: 댓글 작성
   if (req.method === "POST") {
-    const { article_id, text, username, side } = req.body;
+    const { article_id, text, username, side, avatar_index } = req.body;
     if (!article_id || !text) return res.status(400).json({ error: "article_id and text required" });
+    const row = { article_id, text, username: username || "익명시민", side: side || "center" };
+    if (avatar_index != null) row.avatar_index = avatar_index;
     const r = await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
       method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ article_id, text, username: username || "익명시민", side: side || "center" })
+      body: JSON.stringify(row)
     });
     return res.status(201).json(r.ok ? await r.json() : { error: "Failed" });
   }
