@@ -47,6 +47,17 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 const SUPABASE_URL='https://rwcmthtyisuqkisxufst.supabase.co';
 const SUPABASE_ANON='sb_publishable_WFWzeNbNgzx5Q7QgcnSNYg_6KMsd7NX';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+const AVATARS=[
+  {bg:'#FF6B6B',emoji:'🦊'},{bg:'#4ECDC4',emoji:'🐋'},{bg:'#45B7D1',emoji:'🦅'},
+  {bg:'#96CEB4',emoji:'🌿'},{bg:'#FFEAA7',emoji:'⭐'},{bg:'#DDA0DD',emoji:'🦋'},
+  {bg:'#98D8C8',emoji:'🐢'},{bg:'#F7DC6F',emoji:'🌻'},{bg:'#BB8FCE',emoji:'🔮'},
+  {bg:'#85C1E9',emoji:'🐬'},{bg:'#F1948A',emoji:'🌸'},{bg:'#82E0AA',emoji:'🍀'},
+  {bg:'#F8C471',emoji:'🦁'},{bg:'#AED6F1',emoji:'❄️'},{bg:'#D7BDE2',emoji:'🎵'},
+  {bg:'#A3E4D7',emoji:'🌊'},{bg:'#FAD7A0',emoji:'🔥'},{bg:'#D5DBDB',emoji:'🐺'}
+];
+function getAvatar(){const i=localStorage.getItem('dasi_avatar');return i?AVATARS[parseInt(i)]||AVATARS[0]:null;}
+function setAvatar(i){localStorage.setItem('dasi_avatar',String(i));}
+function avatarEl(av,size){return av?`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${av.bg};display:flex;align-items:center;justify-content:center;font-size:${size*0.5}px;flex-shrink:0">${av.emoji}</div>`:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--muted2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#FFF;font-size:${size*0.4}px">?</span></div>`;}
 
 const S={tab:'home',articles:[],loading:!1,sel:null,comments:[],cmtLoading:!1,sq:'',sf:!1,
   sources:['전체','정치','경제','사회','외교','부동산','에너지','노동'],
@@ -101,7 +112,7 @@ function vote(id,side){const key='voted_'+id;if(localStorage.getItem(key))return
 async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/api/comments?article_id=${id}`);S.comments=r.ok?await r.json():[];}catch(e){S.comments=[];}S.cmtLoading=!1;render();}
 function getNick(){return localStorage.getItem('dasi_nick')||S.user?.user_metadata?.full_name||S.user?.user_metadata?.name||S.user?.email?.split('@')[0]||'익명';}
 function setNick(n){localStorage.setItem('dasi_nick',n);}
-async function postCmt(id,t){if(!S.user)return;try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t,username:getNick()})});S.stats.comments++;loadCmt(id);}catch(e){}}
+async function postCmt(id,t){if(!S.user)return;const avIdx=localStorage.getItem('dasi_avatar')||'0';try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t,username:getNick(),avatar_index:parseInt(avIdx)})});S.stats.comments++;loadCmt(id);}catch(e){}}
 async function loadMyCmt(){S.myCmtLoading=!0;render();try{const r=await fetch(`/api/comments?username=${encodeURIComponent(getNick())}`);S.myComments=r.ok?await r.json():[];}catch(e){S.myComments=[];}S.myCmtLoading=!1;render();}
 
 function rHeader(){
@@ -131,7 +142,14 @@ function rCard(a,i){
         h('div',{style:{fontSize:'15px',fontWeight:'700',lineHeight:'1.55'}},a.title)),
       a.thumbnail?h('div',{style:{width:'80px',height:'80px',borderRadius:'var(--radius-sm)',overflow:'hidden',flexShrink:0,background:'var(--ghost)'}},
         h('img',{src:a.thumbnail,style:{width:'100%',height:'100%',objectFit:'cover'},onError:e=>{e.target.parentElement.style.display='none';}})):null),
-    has?h('div',{style:{fontSize:'13px',color:'var(--text3)',lineHeight:'1.5',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical'}},a.summary):null
+    has?h('div',{style:{fontSize:'13px',color:'var(--text3)',lineHeight:'1.5',marginBottom:'8px',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical'}},a.summary):null,
+    has?h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px'}},
+      h('div',{style:{padding:'8px 10px',borderRadius:'var(--radius-sm)',background:'var(--left-bg)',borderLeft:'2.5px solid var(--left-color)'}},
+        h('div',{style:{fontSize:'10px',fontWeight:'700',color:'var(--left-color)',marginBottom:'3px'}},'진보'),
+        h('div',{style:{fontSize:'11.5px',color:'var(--text2)',lineHeight:'1.45',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical'}},a.progressive_stance)),
+      h('div',{style:{padding:'8px 10px',borderRadius:'var(--radius-sm)',background:'var(--right-bg)',borderLeft:'2.5px solid var(--right-color)'}},
+        h('div',{style:{fontSize:'10px',fontWeight:'700',color:'var(--right-color)',marginBottom:'3px'}},'보수'),
+        h('div',{style:{fontSize:'11.5px',color:'var(--text2)',lineHeight:'1.45',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical'}},a.conservative_stance))):null
   );
 }
 
@@ -161,10 +179,7 @@ function rDetail(){
       h('div',{style:{fontSize:'14px',lineHeight:'1.8',color:'var(--text2)'}},a.description||'본문 요약이 없습니다.'),
       h('a',{href:a.link,target:'_blank',style:{display:'inline-flex',alignItems:'center',gap:'4px',marginTop:'14px',fontSize:'13px',color:'var(--blue)',textDecoration:'none',fontWeight:'600'}},
         h('span',{},'원문 기사 보기'),h('span',{innerHTML:IC.link}))),
-    has&&!S.stanceOpen?h('button',{style:{margin:'16px 20px',padding:'14px',width:'calc(100% - 40px)',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--card)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',fontSize:'14px',fontWeight:'600',color:'var(--text)'},
-      onClick:e=>{e.stopPropagation();S.stanceOpen=!0;S.stats.stanceOpens++;render();}},
-      h('span',{style:{fontSize:'16px'}},'👀'),h('span',{},'다른 시각도 있어요')):null,
-    has&&S.stanceOpen?h('div',{style:{margin:'12px 20px 0',animation:'fadeUp 0.3s ease'}},
+    has?h('div',{style:{margin:'12px 20px 0'}},
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}},
         rSide(a.progressive_stance,rs(a.progressive_reasons),a.progressive_concern,'진보','var(--left-color)','var(--left-bg)'),
         rSide(a.conservative_stance,rs(a.conservative_reasons),a.conservative_concern,'보수','var(--right-color)','var(--right-bg)')),
@@ -179,11 +194,13 @@ function rDetail(){
     h('div',{style:{padding:'0 20px'}},
       h('div',{style:{fontSize:'14px',fontWeight:'700',marginBottom:'14px'}},`댓글 ${S.comments.length}개`),
       S.cmtLoading?h('div',{style:{textAlign:'center',padding:'20px',color:'var(--muted)',fontSize:'13px'}},'불러오는 중...'):null,
-      ...S.comments.map((c,i)=>h('div',{style:{padding:'12px 0',borderBottom:'1px solid var(--border)',animation:`fadeUp 0.2s ease ${i*0.03}s both`}},
-        h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:'4px'}},
-          h('span',{style:{fontSize:'13px',fontWeight:'700'}},c.username),
-          h('span',{style:{fontSize:'11px',color:'var(--muted)'}},tAgo(c.created_at))),
-        h('div',{style:{fontSize:'13px',lineHeight:'1.6',color:'var(--text2)'}},c.text))),
+      ...S.comments.map((c,i)=>h('div',{style:{display:'flex',gap:'10px',padding:'12px 0',borderBottom:'1px solid var(--border)',animation:`fadeUp 0.2s ease ${i*0.03}s both`}},
+        h('div',{innerHTML:avatarEl(c.avatar_index!=null?AVATARS[c.avatar_index]:null,32)}),
+        h('div',{style:{flex:1,minWidth:0}},
+          h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:'4px'}},
+            h('span',{style:{fontSize:'13px',fontWeight:'700'}},c.username),
+            h('span',{style:{fontSize:'11px',color:'var(--muted)'}},tAgo(c.created_at))),
+          h('div',{style:{fontSize:'13px',lineHeight:'1.6',color:'var(--text2)'}},c.text)))),
       S.comments.length===0&&!S.cmtLoading?h('div',{style:{textAlign:'center',padding:'30px',color:'var(--muted)'}},h('div',{style:{fontSize:'13px'}},'첫 댓글을 남겨보세요')):null),
     h('div',{style:{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'430px',background:'var(--nav)',borderTop:'1px solid var(--sep)',padding:'10px 16px 30px',display:'flex',gap:'8px',alignItems:'center',zIndex:20}},
       S.user?h('input',{id:'cmt',placeholder:'댓글을 입력해 보세요.',style:{flex:1,padding:'10px 14px',borderRadius:'20px',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}):
@@ -270,7 +287,7 @@ function rProfile(){
   return h('div',{style:{padding:'52px 20px 100px'}},
     // 프로필 헤더
     h('div',{style:{textAlign:'center',marginBottom:'24px'}},
-      h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',margin:'0 auto 12px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'24px',fontWeight:'800'}},nick[0]),
+      h('div',{innerHTML:avatarEl(getAvatar()||AVATARS[0],64),style:{display:'flex',justifyContent:'center',marginBottom:'12px'}}),
       h('h2',{style:{fontSize:'18px',fontWeight:'800'}},nick)),
     // 닉네임 변경
     h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'14px',border:'1px solid var(--border)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}},
@@ -300,13 +317,17 @@ function rProfile(){
 }
 
 function rSetupNick(){
+  const selAv=S._setupAvatar||0;
   return h('div',{style:{padding:'52px 20px 100px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh'}},
-    h('div',{style:{width:'64px',height:'64px',borderRadius:'50%',marginBottom:'20px',background:'linear-gradient(135deg,var(--blue),var(--green))',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFF',fontSize:'28px',fontWeight:'800'}},'?'),
-    h('h2',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'6px'}},'닉네임을 정해주세요'),
-    h('p',{style:{fontSize:'13px',color:'var(--muted)',marginBottom:'30px'}},'댓글에 표시될 이름이에요'),
+    h('div',{innerHTML:avatarEl(AVATARS[selAv],72),style:{marginBottom:'16px'}}),
+    h('h2',{style:{fontSize:'20px',fontWeight:'800',marginBottom:'6px'}},'프로필을 설정해주세요'),
+    h('p',{style:{fontSize:'13px',color:'var(--muted)',marginBottom:'20px'}},'아바타와 닉네임을 선택하세요'),
+    h('div',{style:{display:'flex',flexWrap:'wrap',gap:'10px',justifyContent:'center',maxWidth:'320px',marginBottom:'24px'}},
+      ...AVATARS.map((av,i)=>h('div',{innerHTML:avatarEl(av,40),style:{cursor:'pointer',borderRadius:'50%',outline:selAv===i?'2.5px solid var(--blue)':'2.5px solid transparent',outlineOffset:'2px'},
+        onClick:()=>{S._setupAvatar=i;render();}}))),
     h('input',{id:'setupNick',placeholder:'닉네임 입력',style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'15px',color:'var(--text)',outline:'none',textAlign:'center',marginBottom:'16px'}}),
     h('button',{style:{width:'100%',maxWidth:'300px',padding:'14px',borderRadius:'var(--radius)',border:'none',background:'var(--blue)',color:'#FFF',fontSize:'15px',fontWeight:'700',cursor:'pointer'},
-      onClick:()=>{const v=document.getElementById('setupNick')?.value?.trim();if(v){setNick(v);render();}}},'시작하기'));
+      onClick:()=>{const v=document.getElementById('setupNick')?.value?.trim();if(v){setNick(v);setAvatar(S._setupAvatar||0);render();}}},'시작하기'));
 }
 
 function rLoginPage(){
