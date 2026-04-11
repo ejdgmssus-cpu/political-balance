@@ -67,20 +67,22 @@ export default async function handler(req, res) {
     let newArticles = cleaned.filter(a => !existingLinks.has(a.link));
     if (newArticles.length === 0) return res.status(200).json({ message: "새 기사 없음", count: 0 });
 
-    const toAnalyze = newArticles.slice(0, 2);
-    const analyzed = [];
-    for (const article of toAnalyze) {
-      const { thumbnail, fullText } = await fetchArticlePage(article.naverLink || article.link);
+    const toAnalyze = newArticles.slice(0, 4);
+    // 병렬로 기사 크롤링
+    const pages = await Promise.all(toAnalyze.map(a => fetchArticlePage(a.naverLink || a.link)));
+    // 병렬로 Gemini 분석
+    const analyzed = await Promise.all(toAnalyze.map(async (article, i) => {
+      const { thumbnail, fullText } = pages[i];
       const { naverLink, ...rest } = article;
       const bodyForAI = fullText || rest.description;
       try {
         const analysis = await analyzeWithGemini(rest.title, bodyForAI, rest.category, GEMINI_KEY);
-        analyzed.push({ ...rest, ...analysis, thumbnail, description: fullText ? fullText.slice(0, 500) : rest.description });
+        return { ...rest, ...analysis, thumbnail, description: fullText ? fullText.slice(0, 500) : rest.description };
       } catch (e) {
         console.error("Gemini error:", e.message);
-        analyzed.push({ ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail });
+        return { ...rest, summary: "AI 분석 준비 중", progressive_stance: "분석 중", progressive_reasons: '["준비 중"]', progressive_concern: "-", conservative_stance: "분석 중", conservative_reasons: '["준비 중"]', conservative_concern: "-", common_ground: "-", thumbnail };
       }
-    }
+    }));
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
       method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify(analyzed)

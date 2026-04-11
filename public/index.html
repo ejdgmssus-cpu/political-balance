@@ -113,7 +113,7 @@ async function loadCmt(id){S.cmtLoading=!0;render();try{const r=await fetch(`/ap
 function getNick(){return localStorage.getItem('dasi_nick')||S.user?.user_metadata?.full_name||S.user?.user_metadata?.name||S.user?.email?.split('@')[0]||'익명';}
 function setNick(n){localStorage.setItem('dasi_nick',n);}
 async function postCmt(id,t){if(!S.user)return;const avIdx=localStorage.getItem('dasi_avatar')||'0';try{await fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({article_id:id,text:t,username:getNick(),avatar_index:parseInt(avIdx)})});S.stats.comments++;loadCmt(id);}catch(e){}}
-async function loadMyCmt(){S.myCmtLoading=!0;render();try{const r=await fetch(`/api/comments?username=${encodeURIComponent(getNick())}`);S.myComments=r.ok?await r.json():[];}catch(e){S.myComments=[];}S.myCmtLoading=!1;render();}
+async function loadMyCmt(){if(S.myCmtLoading)return;S.myCmtLoading=!0;S._myCmtDone=!1;render();try{const r=await fetch(`/api/comments?username=${encodeURIComponent(getNick())}`);S.myComments=r.ok?await r.json():[];}catch(e){S.myComments=[];}S.myCmtLoading=!1;S._myCmtDone=!0;render();}
 
 function rHeader(){
   return h('div',{style:{padding:'52px 0 0',background:'var(--nav)',borderBottom:'1px solid var(--sep)'}},
@@ -289,6 +289,14 @@ function rProfile(){
     h('div',{style:{textAlign:'center',marginBottom:'24px'}},
       h('div',{style:{display:'flex',justifyContent:'center',marginBottom:'12px'}},avatarDom(getAvatar()||AVATARS[0],64)),
       h('h2',{style:{fontSize:'18px',fontWeight:'800'}},nick)),
+    // 아바타 변경
+    S._showAvEdit?h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'14px',border:'1px solid var(--border)',marginBottom:'12px'}},
+      h('div',{style:{fontSize:'12px',fontWeight:'600',color:'var(--text3)',marginBottom:'10px'}},'아바타 변경'),
+      h('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',justifyContent:'center'}},
+        ...AVATARS.map((av,i)=>h('div',{style:{cursor:'pointer',borderRadius:'50%',outline:(getAvatar()===av)?'2.5px solid var(--blue)':'2.5px solid transparent',outlineOffset:'2px'},
+          onClick:()=>{setAvatar(i);S._showAvEdit=!1;render();}},avatarDom(av,36))))):
+    h('button',{style:{fontSize:'12px',color:'var(--blue)',border:'none',background:'transparent',cursor:'pointer',fontWeight:'600',marginBottom:'12px'},
+      onClick:()=>{S._showAvEdit=!0;render();}},'아바타 변경'),
     // 닉네임 변경
     h('div',{style:{background:'var(--card)',borderRadius:'var(--radius)',padding:'14px',border:'1px solid var(--border)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}},
       h('input',{id:'nickInput',placeholder:'닉네임 변경',value:nick,style:{flex:1,padding:'8px 12px',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--input)',fontSize:'13px',color:'var(--text)',outline:'none'}}),
@@ -365,7 +373,7 @@ function render(){
   }
   if(S.tab==='search')app.appendChild(rSearch());
   if(S.tab==='trending')app.appendChild(rTrending());
-  if(S.tab==='profile'){if(S.user&&localStorage.getItem('dasi_nick')&&S.myComments.length===0&&!S.myCmtLoading){S.myCmtLoading=!0;fetch(`/api/comments?username=${encodeURIComponent(getNick())}`).then(r=>r.ok?r.json():[]).then(d=>{S.myComments=d;S.myCmtLoading=!1;render();}).catch(()=>{S.myCmtLoading=!1;render();});}app.appendChild(rProfile());}
+  if(S.tab==='profile'){if(S.user&&localStorage.getItem('dasi_nick')&&!S._myCmtDone&&!S.myCmtLoading){setTimeout(()=>loadMyCmt(),0);}app.appendChild(rProfile());}
   if(!S.sel)app.appendChild(rNav());
 }
 loadArticles('전체');
